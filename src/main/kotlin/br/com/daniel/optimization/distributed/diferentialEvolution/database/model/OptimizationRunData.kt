@@ -17,7 +17,10 @@ class OptimizationRunData(
     val perturbationFactor: Double? = null,
     val valueToReach: Double? = null,
     val maxGenerations: Int? = null,
-    val bestSoFarChromosomeId: Int? = null,
+    val currentGeneration: Int,
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "chromosomeId", unique = true, nullable = true)
+    var bestSoFarChromosome: ChromosomeData? = null,
     val objectiveFunctionEvaluationTimeoutSeconds: Long? = null,
     var status: OptimizationStatus = OptimizationStatus.RUNNING,
     @ElementCollection

@@ -20,6 +20,7 @@ data class CreateOptimizationRunRequest (
             crossOverProbability = this.crossOverProbability,
             perturbationFactor = this.perturbationFactor,
             valueToReach = this.valueToReach,
+            currentGeneration = 1,
             maxGenerations = this.maxGenerations,
             objectiveFunctionEvaluationTimeoutSeconds = this.objectiveFunctionEvaluationTimeoutSeconds,
             chromosomeElementDetails = this.chromosomeElementDetails

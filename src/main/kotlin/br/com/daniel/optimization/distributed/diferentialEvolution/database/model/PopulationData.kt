@@ -11,10 +11,11 @@ class PopulationData(
     @Id
     @GeneratedValue(strategy = SEQUENCE)
     val id: Long? = null,
-    val optimizationRunId: Int? = null,
+    val optimizationRunId: Long? = null,
     val generation: Int? = null,
     val size: Int? = null,
-    @OneToMany(mappedBy = "populationId")
+    @OneToMany(cascade = [CascadeType.ALL])
+    @JoinColumn(name = "populationId")
     var populationMembers: MutableList<ChromosomeData>? = null,
     val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
 ) {

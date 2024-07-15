@@ -1,5 +1,7 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.model
 
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.TARGET
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationRunData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 
@@ -39,6 +41,7 @@ class OptimizationRun(
     )
 
     val bestSoFarChromosomeId: Int? = null
+
     fun createInitialPopulation(): Population {
         val populationMembers = mutableListOf<Chromosome>()
         val chromosomeSize = chromosomeElementsDetails.size
@@ -50,6 +53,7 @@ class OptimizationRun(
                 chromosomeElements.add(chromosomeElementValue)
             }
             val chromosome = Chromosome(
+                type = TARGET,
                 size = chromosomeSize,
                 elements = chromosomeElements
             )

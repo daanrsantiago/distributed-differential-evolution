@@ -3,31 +3,38 @@ package br.com.daniel.optimization.distributed.diferentialEvolution.controller.m
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeElementDetailsData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationRunData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
+import java.time.ZonedDateTime
 
-data class CreateOptimizationRunResponse(
-    val id: Long? = null,
-    val objectiveFunctionId: Long? = null,
-    val populationSize: Int? = null,
-    val crossOverProbability: Double? = null,
-    val perturbationFactor: Double? = null,
-    val valueToReach: Double? = null,
-    val maxGenerations: Int? = null,
+data class GetOptimizationRunResponse (
+    val id: Long?,
+    val objectiveFunctionId: Long?,
+    val populationSize: Int?,
+    val crossOverProbability: Double?,
+    val perturbationFactor: Double?,
+    val valueToReach: Double?,
+    val maxGenerations: Int?,
+    val currentGeneration: Int?,
+    var bestSoFarChromosome: ChromosomeResponse?,
     val objectiveFunctionEvaluationTimeoutSeconds: Long?,
-    val chromosomeElementDetails: List<ChromosomeElementDetailsData>? = null,
-    val status: OptimizationStatus? = null,
+    var status: OptimizationStatus,
+    val chromosomeElementDetails: MutableList<ChromosomeElementDetailsData>?,
+    val createdAt: ZonedDateTime
 ) {
 
     constructor(optimizationRunData: OptimizationRunData): this(
-        id = optimizationRunData.id,
+        id = optimizationRunData.id!!,
         objectiveFunctionId = optimizationRunData.objectiveFunctionId,
         populationSize = optimizationRunData.populationSize,
         crossOverProbability = optimizationRunData.crossOverProbability,
         perturbationFactor = optimizationRunData.perturbationFactor,
         valueToReach = optimizationRunData.valueToReach,
-        maxGenerations = optimizationRunData.maxGenerations,
+        maxGenerations = optimizationRunData.maxGenerations!!,
+        currentGeneration = optimizationRunData.currentGeneration,
+        bestSoFarChromosome = optimizationRunData.bestSoFarChromosome?.let { ChromosomeResponse(it) },
         objectiveFunctionEvaluationTimeoutSeconds = optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
+        status = optimizationRunData.status,
         chromosomeElementDetails = optimizationRunData.chromosomeElementDetails,
-        status = optimizationRunData.status
+        createdAt = optimizationRunData.createdAt,
     )
 
 }
