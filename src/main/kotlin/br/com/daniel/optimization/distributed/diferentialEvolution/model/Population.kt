@@ -1,14 +1,20 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.model
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.*
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.PopulationData
-import br.com.daniel.optimization.distributed.diferentialEvolution.util.*
+import br.com.daniel.optimization.distributed.diferentialEvolution.util.minus
+import br.com.daniel.optimization.distributed.diferentialEvolution.util.plus
+import br.com.daniel.optimization.distributed.diferentialEvolution.util.times
 
 class Population(
     val generation: Int,
     val populationMembers: MutableList<Chromosome>,
 ) {
+
+    constructor(populationData: PopulationData): this(
+        generation = populationData.generation!!,
+        populationMembers = populationData.populationMembers!!.map { Chromosome(it) }.toMutableList()
+    )
 
     fun toPopulationData(optimizationRunId: Long, objectiveFunctionId: Long): PopulationData {
         return PopulationData(

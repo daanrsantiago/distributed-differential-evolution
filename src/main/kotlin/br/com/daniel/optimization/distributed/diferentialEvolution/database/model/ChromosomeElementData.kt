@@ -5,7 +5,7 @@ import jakarta.persistence.Embeddable
 
 
 @Embeddable
-class ChromosomeElementData(
+data class ChromosomeElementData(
     val position: Int,
     @Column(name = "chromosomeValue")
     val value: Double

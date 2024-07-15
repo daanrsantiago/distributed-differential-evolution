@@ -21,6 +21,20 @@ class Chromosome(
     val elements: MutableList<Double>,
 ) {
 
+    constructor(chromosomeData: ChromosomeData): this(
+        id = chromosomeData.id,
+        populationId = chromosomeData.populationId,
+        fitness = chromosomeData.fitness,
+        size = chromosomeData.size,
+        type = chromosomeData.type,
+        targetChromosomeId = chromosomeData.targetChromosomeId,
+        targetPopulationId = chromosomeData.targetPopulationId,
+        evaluationStatus = chromosomeData.evaluationStatus,
+        evaluationBeginAt = chromosomeData.evaluationBeginAt,
+        evaluatedAt = chromosomeData.evaluatedAt,
+        elements = chromosomeData.elements!!.sortedBy { it.position }.map { it.value }.toMutableList()
+    )
+
     fun toChromosomeData(optimizationRunId: Long, objectiveFunctionId: Long): ChromosomeData {
         return ChromosomeData(
             id = id,

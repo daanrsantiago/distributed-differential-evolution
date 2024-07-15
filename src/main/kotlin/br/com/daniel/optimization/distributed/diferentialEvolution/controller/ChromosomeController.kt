@@ -81,9 +81,7 @@ class ChromosomeController(
 
         if (!shouldStopOptimizationRun && allPopulationChromosomesEvaluated) {
             logger.info("Performing selection on population with id $populationIdToLook and optimizationRun with id ${chromosomeData.optimizationRunId}")
-            val newPopulationData = performSelection(optimizationRunData, populationData)
-            logger.info("Saving new population with id ${newPopulationData.id} and optimizationRun with id ${chromosomeData.optimizationRunId}")
-            populationRepository.save(newPopulationData)
+            performSelection(optimizationRunData, populationData)
         }
 
         return ResponseEntity.ok(ChromosomeResponse(chromosomeData))
@@ -128,24 +126,34 @@ class ChromosomeController(
     }
 
     private fun performSelection(optimizationRunData: OptimizationRunData, populationData: PopulationData): PopulationData {
-        val newPopulation = populationRepository.save(PopulationData(
+        val newPopulationData = populationRepository.save(PopulationData(
             optimizationRunId = optimizationRunData.id,
             generation = optimizationRunData.currentGeneration + 1,
             size = populationData.size
         ))
+        logger.info("Saving new population with id ${newPopulationData.id} and optimizationRun with id ${optimizationRunData.id}")
         val currentPopulationChromosomesMap = mapOf(*populationData.populationMembers!!.map { Pair(it.id!!, it) }.toTypedArray())
         val experimentalChromosomes = chromosomeRepository.findAllByTargetPopulationIdAndType(populationData.id, EXPERIMENTAL)
 
         val selectedChromosomes = experimentalChromosomes.map { experimentalChromosome ->
+            var selectedChromosomeData: ChromosomeData
             val targetChromosome = currentPopulationChromosomesMap[experimentalChromosome.targetChromosomeId]
-            if (targetChromosome!!.fitness!! > experimentalChromosome.fitness!!) {
-                targetChromosome.id = null
-                targetChromosome.populationId = newPopulation.id
-                return@map targetChromosome
+            selectedChromosomeData = if (targetChromosome!!.fitness!! > experimentalChromosome.fitness!!) {
+                targetChromosome.copy(
+                    id = null,
+                    populationId = newPopulationData.id,
+                    type = TARGET
+                )
+            } else {
+                experimentalChromosome.copy(
+                    id = null,
+                    populationId = newPopulationData.id,
+                    type = TARGET
+                )
             }
-            experimentalChromosome.id = null
-            experimentalChromosome.populationId = newPopulation.id
-            return@map experimentalChromosome
+            selectedChromosomeData.elements = selectedChromosomeData.elements?.map { it.copy() }?.toMutableList()
+            selectedChromosomeData = chromosomeRepository.save(selectedChromosomeData)
+            return@map selectedChromosomeData
         }.toMutableList()
 
         return PopulationData(

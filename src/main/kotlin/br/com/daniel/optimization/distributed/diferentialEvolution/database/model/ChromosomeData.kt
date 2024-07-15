@@ -7,7 +7,7 @@ import java.time.ZonedDateTime
 
 @Entity
 @Table(name = "chromosomes")
-class ChromosomeData (
+data class ChromosomeData (
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     @Column(name = "chromosomeId")
@@ -30,6 +30,6 @@ class ChromosomeData (
         name="chromosomeElement",
         joinColumns= [JoinColumn(name = "chromosomeId")]
     )
-    val elements: MutableList<ChromosomeElementData>? = null,
+    var elements: MutableList<ChromosomeElementData>? = null,
     var createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo")),
 )
