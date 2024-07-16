@@ -3,7 +3,7 @@ package br.com.daniel.optimization.distributed.diferentialEvolution.controller.m
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 
 data class OptimizationRunChromosomeResponse(
-    val optimizationRunId: Long?,
+    val optimizationRunId: Long,
     val optimizationStatus: OptimizationStatus,
-    val chromosome: ChromosomeResponse
+    val chromosome: ChromosomeResponse? = null
 )

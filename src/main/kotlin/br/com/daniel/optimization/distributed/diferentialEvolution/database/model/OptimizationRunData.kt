@@ -17,7 +17,7 @@ class OptimizationRunData(
     val perturbationFactor: Double? = null,
     val valueToReach: Double? = null,
     val maxGenerations: Int? = null,
-    val currentGeneration: Int,
+    var currentGeneration: Int,
     @ManyToOne(optional = true)
     @JoinColumn(name = "chromosomeId", unique = true, nullable = true)
     var bestSoFarChromosome: ChromosomeData? = null,

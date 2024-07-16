@@ -25,12 +25,39 @@ class Population(
         )
     }
 
-    fun createExperimentalChromosomes(perturbationFactor: Double, crossoverProbability: Double): MutableList<Chromosome> {
-        return populationMembers.map { createExperimentalChromosome(it, perturbationFactor, crossoverProbability) }.toMutableList()
+    fun createExperimentalChromosomes(optimizationRun: OptimizationRun): MutableList<Chromosome> {
+        return populationMembers.map {
+            createExperimentalChromosome(
+                it,
+                optimizationRun.perturbationFactor,
+                optimizationRun.crossOverProbability,
+                optimizationRun.chromosomeElementsDetails
+            )
+        }.toMutableList()
     }
 
-    private fun createExperimentalChromosome(targetChromosome: Chromosome, perturbationFactor: Double, crossoverProbability: Double): Chromosome {
-        val donorChromosome = createDonorChromosome(targetChromosome, perturbationFactor)
+    fun createExperimentalChromosomes(
+        perturbationFactor: Double,
+        crossoverProbability: Double,
+        chromosomeElementDetails: List<ChromosomeElementDetails>
+    ): MutableList<Chromosome> {
+        return populationMembers.map {
+            createExperimentalChromosome(
+                it,
+                perturbationFactor,
+                crossoverProbability,
+                chromosomeElementDetails
+            )
+        }.toMutableList()
+    }
+
+    private fun createExperimentalChromosome(
+        targetChromosome: Chromosome,
+        perturbationFactor: Double,
+        crossoverProbability: Double,
+        chromosomeElementDetails: List<ChromosomeElementDetails>
+    ): Chromosome {
+        val donorChromosome = createDonorChromosome(targetChromosome, perturbationFactor, chromosomeElementDetails)
         val experimentalChromosomeElements = targetChromosome.elements.mapIndexed { targetChromosomeElementIndex, targetChromosomeElement ->
             if (Math.random() < crossoverProbability) donorChromosome.elements[targetChromosomeElementIndex]
             targetChromosomeElement
@@ -43,21 +70,39 @@ class Population(
             size = populationMembers.size
         )
     }
-
-    private fun createDonorChromosome(targetChromosome: Chromosome, perturbationFactor: Double): Chromosome {
+    private fun createDonorChromosome(
+        targetChromosome: Chromosome,
+        perturbationFactor: Double,
+        chromosomeElementDetails: List<ChromosomeElementDetails>
+    ): Chromosome {
         val differenceChromosome = createDifferenceChromosome()
+        val donorChromosomeElements = targetChromosome.elements + (differenceChromosome.elements * perturbationFactor)
+        limitChromosomeElementsToBoundaries(chromosomeElementDetails, donorChromosomeElements)
         return Chromosome(
             type = DONOR,
             targetChromosomeId = targetChromosome.id,
             targetPopulationId = targetChromosome.targetPopulationId,
-            elements = targetChromosome.elements + (differenceChromosome.elements * perturbationFactor),
+            elements = donorChromosomeElements,
             size = populationMembers.size
         )
     }
 
+    private fun limitChromosomeElementsToBoundaries(
+        chromosomeElementDetails: List<ChromosomeElementDetails>,
+        donorChromosomeElements: MutableList<Double>
+    ) {
+        chromosomeElementDetails.forEach {
+            if (donorChromosomeElements[it.position] > it.upperBoundary) {
+                donorChromosomeElements[it.position] = it.upperBoundary
+            } else if (donorChromosomeElements[it.position] < it.lowerBoundary) {
+                donorChromosomeElements[it.position] = it.lowerBoundary
+            }
+        }
+    }
+
     private fun createDifferenceChromosome(): Chromosome {
         return Chromosome(
-            type = DIFFERENCE,
+            type = DIFFERENTIAL,
             elements = getRandomMember().elements - getRandomMember().elements,
             size = populationMembers.size
         )

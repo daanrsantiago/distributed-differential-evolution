@@ -11,6 +11,8 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.database.repo
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.OptimizationRunRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.PopulationRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.Population
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
@@ -57,35 +59,88 @@ class ChromosomeController(
         @RequestBody
         changeEvaluationResultRequest: ChangeEvaluationResultRequest
     ): ResponseEntity<ChromosomeResponse> {
-        val chromosomeData = chromosomeRepository
-            .findById(chromosomeId)
-            .orElseThrow { RestHandledException(ErrorResponse(NOT_FOUND.value(), "Chromosome with id $chromosomeId not found")) }
+        val chromosomeData = getChromosomeData(chromosomeId)
+        val optimizationRunId = chromosomeData.optimizationRunId!!
+        val populationId = chromosomeData.populationId
+        val targetPopulationId = chromosomeData.targetPopulationId
+        val populationIdToLook = if (chromosomeData.type == TARGET) populationId!! else targetPopulationId!!
 
         checkIfChromosomeIsEvaluatingOrTimeout(chromosomeData)
         checkIfEvaluationIdIsTheSame(chromosomeData, changeEvaluationResultRequest.evaluationId)
         fillAndSaveChromosomeData(chromosomeData, changeEvaluationResultRequest)
 
-        val optimizationRunData = optimizationRunRepository
-            .findById(chromosomeData.optimizationRunId!!)
-            .orElseThrow { RestHandledException(ErrorResponse(NOT_FOUND.value(), "OptimizationRun with id ${chromosomeData.optimizationRunId} not found")) }
+        val optimizationRunData = getOptimizationRunData(optimizationRunId)
+        val optimizationRun = OptimizationRun(optimizationRunData)
         substituteBestSoFarChromosomeIfNecessary(optimizationRunData, chromosomeData)
 
-        val populationIdToLook = if (chromosomeData.type == TARGET) chromosomeData.populationId!! else chromosomeData.targetPopulationId!!
+        val populationData = getPopulationData(populationIdToLook)
 
-        val populationData = populationRepository
-            .findById(populationIdToLook)
-            .orElseThrow { RestHandledException(ErrorResponse(NOT_FOUND.value(), "Population with id ${chromosomeData.populationId} not found")) }
-
-        val allPopulationChromosomesEvaluated = chromosomeRepository.areAllChromosomesEvaluated(chromosomeData.optimizationRunId)
-        val shouldStopOptimizationRun = checkForStopCriteria(optimizationRunData, allPopulationChromosomesEvaluated)
-
-        if (!shouldStopOptimizationRun && allPopulationChromosomesEvaluated) {
-            logger.info("Performing selection on population with id $populationIdToLook and optimizationRun with id ${chromosomeData.optimizationRunId}")
-            performSelection(optimizationRunData, populationData)
+        val allPopulationChromosomesEvaluated = chromosomeRepository.areAllChromosomesEvaluated(optimizationRunId)
+        if (allPopulationChromosomesEvaluated) {
+            val shouldStopOptimizationRun = checkForStopCriteria(optimizationRunData)
+            if (!shouldStopOptimizationRun) {
+                logger.info("Performing selection on population with id $populationIdToLook and optimizationRun with id $optimizationRunId")
+                createNewPopulation(populationData, optimizationRun)
+                optimizationRunData.currentGeneration += 1
+                optimizationRunRepository.save(optimizationRunData)
+            }
         }
 
         return ResponseEntity.ok(ChromosomeResponse(chromosomeData))
     }
+
+    private fun createNewPopulation(
+        populationData: PopulationData,
+        optimizationRun: OptimizationRun,
+    ) {
+        val newPopulationData = performSelection(optimizationRun, populationData)
+        val newPopulation = Population(newPopulationData)
+        val newExperimentalChromosomes = newPopulation.createExperimentalChromosomes(optimizationRun)
+        val newExperimentalChromosomesData = newExperimentalChromosomes.map {
+            it.toChromosomeData(
+                optimizationRun.id,
+                optimizationRun.objectiveFunctionId
+            )
+        }
+        chromosomeRepository.saveAll(newExperimentalChromosomesData)
+    }
+
+    private fun getChromosomeData(chromosomeId: Long): ChromosomeData =
+        chromosomeRepository
+            .findById(chromosomeId)
+            .orElseThrow {
+                RestHandledException(
+                    ErrorResponse(
+                        NOT_FOUND.value(),
+                        "Chromosome with id $chromosomeId not found"
+                    )
+                )
+            }!!
+
+    private fun getPopulationData(
+        populationIdToLook: Long
+    ): PopulationData = populationRepository
+        .findById(populationIdToLook)
+        .orElseThrow {
+            RestHandledException(
+                ErrorResponse(
+                    NOT_FOUND.value(),
+                    "Population with id $populationIdToLook not found"
+                )
+            )
+        }!!
+
+    private fun getOptimizationRunData(optimizationRunId: Long): OptimizationRunData =
+        optimizationRunRepository
+            .findById(optimizationRunId)
+            .orElseThrow {
+                RestHandledException(
+                    ErrorResponse(
+                        NOT_FOUND.value(),
+                        "OptimizationRun with id $optimizationRunId not found"
+                    )
+                )
+            }!!
 
     private fun fillAndSaveChromosomeData(
         chromosomeData: ChromosomeData,
@@ -109,15 +164,19 @@ class ChromosomeController(
         }
     }
 
-    private fun substituteBestSoFarChromosomeIfNecessary(optimizationRunData: OptimizationRunData, chromosome: ChromosomeData) {
-        if (optimizationRunData.bestSoFarChromosome == null || ( optimizationRunData.bestSoFarChromosome!!.fitness!! < chromosome.fitness!! )) {
-            optimizationRunData.bestSoFarChromosome = chromosome
+    private fun substituteBestSoFarChromosomeIfNecessary(optimizationRunData: OptimizationRunData, chromosomeData: ChromosomeData) {
+        if (optimizationRunData.bestSoFarChromosome == null || ( optimizationRunData.bestSoFarChromosome!!.fitness!! < chromosomeData.fitness!! )) {
+            logger.info("""Chromosome with id ${chromosomeData.id} is the new best so far for optimizationRun with id ${optimizationRunData.id}
+                elements: ${chromosomeData.elements?.map { it.value }}
+                fitness: ${chromosomeData.fitness}""")
+            optimizationRunData.bestSoFarChromosome = chromosomeData
             optimizationRunRepository.save(optimizationRunData)
         }
     }
 
-    private fun checkForStopCriteria(optimizationRunData: OptimizationRunData, allPopulationChromosomesEvaluated: Boolean): Boolean {
-        if (optimizationRunData.maxGenerations == optimizationRunData.currentGeneration && allPopulationChromosomesEvaluated) {
+    private fun checkForStopCriteria(optimizationRunData: OptimizationRunData): Boolean {
+        if (optimizationRunData.maxGenerations == optimizationRunData.currentGeneration) {
+            logger.info("Changing status of optimizationRun with id ${optimizationRunData.id} to FINISHED ")
             optimizationRunData.status = OptimizationStatus.FINISHED
             optimizationRunRepository.save(optimizationRunData)
             return true
@@ -125,13 +184,13 @@ class ChromosomeController(
         return false
     }
 
-    private fun performSelection(optimizationRunData: OptimizationRunData, populationData: PopulationData): PopulationData {
+    private fun performSelection(optimizationRun: OptimizationRun, populationData: PopulationData): PopulationData {
         val newPopulationData = populationRepository.save(PopulationData(
-            optimizationRunId = optimizationRunData.id,
-            generation = optimizationRunData.currentGeneration + 1,
+            optimizationRunId = optimizationRun.id,
+            generation = optimizationRun.currentGeneration + 1,
             size = populationData.size
         ))
-        logger.info("Saving new population with id ${newPopulationData.id} and optimizationRun with id ${optimizationRunData.id}")
+        logger.info("Saving new population with id ${newPopulationData.id} and optimizationRun with id ${optimizationRun.id}")
         val currentPopulationChromosomesMap = mapOf(*populationData.populationMembers!!.map { Pair(it.id!!, it) }.toTypedArray())
         val experimentalChromosomes = chromosomeRepository.findAllByTargetPopulationIdAndType(populationData.id, EXPERIMENTAL)
 
@@ -157,8 +216,8 @@ class ChromosomeController(
         }.toMutableList()
 
         return PopulationData(
-            optimizationRunId = optimizationRunData.id,
-            generation = optimizationRunData.currentGeneration + 1,
+            optimizationRunId = optimizationRun.id,
+            generation = optimizationRun.currentGeneration + 1,
             size = populationData.size,
             populationMembers = selectedChromosomes
         )

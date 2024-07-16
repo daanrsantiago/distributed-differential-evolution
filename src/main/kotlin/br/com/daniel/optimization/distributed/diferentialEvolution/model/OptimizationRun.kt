@@ -6,11 +6,14 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.database.mode
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 
 class OptimizationRun(
+    val id: Long,
+    val objectiveFunctionId: Long,
     val populationSize: Int,
     val crossOverProbability: Double,
     val perturbationFactor: Double,
     val valueToReach: Double? = null,
     val maxGenerations: Int,
+    val currentGeneration: Int,
     var status: OptimizationStatus,
     val objectiveFunctionEvaluationTimeoutSeconds: Long? = null,
     val chromosomeElementsDetails: MutableList<ChromosomeElementDetails>,
@@ -20,24 +23,19 @@ class OptimizationRun(
     }
 
     constructor(optimizationRunData: OptimizationRunData): this(
+        optimizationRunData.id!!,
+        optimizationRunData.objectiveFunctionId!!,
         optimizationRunData.populationSize!!,
         optimizationRunData.crossOverProbability!!,
         optimizationRunData.perturbationFactor!!,
         optimizationRunData.valueToReach,
         optimizationRunData.maxGenerations!!,
+        optimizationRunData.currentGeneration,
         optimizationRunData.status,
         optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
         optimizationRunData.chromosomeElementDetails!!
-            .sortedBy { it.position }
-            .mapIndexed { index, chromosomeElementDetailsData ->
-                ChromosomeElementDetails(
-                    name = chromosomeElementDetailsData.name!!,
-                    position = index,
-                    lowerBoundary = chromosomeElementDetailsData.lowerBoundary!!,
-                    upperBoundary = chromosomeElementDetailsData.upperBoundary!!,
-                    description = chromosomeElementDetailsData.description
-                )
-            }.toMutableList(),
+            .map { ChromosomeElementDetails(it) }
+            .toMutableList(),
     )
 
     val bestSoFarChromosomeId: Int? = null
