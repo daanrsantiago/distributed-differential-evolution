@@ -1,31 +1,44 @@
-package br.com.daniel.optimization.distributed.diferentialEvolution.model
+package br.com.daniel.optimization.distributed.diferentialEvolution.service
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.*
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.PopulationData
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.OptimizationRunRepository
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromosome
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.Population
 import br.com.daniel.optimization.distributed.diferentialEvolution.util.minus
 import br.com.daniel.optimization.distributed.diferentialEvolution.util.plus
 import br.com.daniel.optimization.distributed.diferentialEvolution.util.times
+import org.springframework.stereotype.Service
 
-class Population(
-    val generation: Int,
-    val populationMembers: MutableList<Chromosome>,
+@Service
+class OptimizationRunService(
+    val optimizationRunRepository: OptimizationRunRepository
 ) {
 
-    constructor(populationData: PopulationData): this(
-        generation = populationData.generation!!,
-        populationMembers = populationData.populationMembers!!.map { Chromosome(it) }.toMutableList()
-    )
+    fun createInitialPopulation(optimizationRun: OptimizationRun): Population {
+        val populationMembers = mutableListOf<Chromosome>()
+        for (iChromosome in 0 until optimizationRun.populationSize) {
+            val chromosomeElements = mutableListOf<Double>()
+            for(chromosomeElementDetails in optimizationRun.chromosomeElementsDetails) {
+                val chromosomeElementValue = chromosomeElementDetails.lowerBoundary +
+                        Math.random() * (chromosomeElementDetails.upperBoundary - chromosomeElementDetails.lowerBoundary)
+                chromosomeElements.add(chromosomeElementValue)
+            }
+            val chromosome = Chromosome(
+                type = ChromosomeType.TARGET,
+                elements = chromosomeElements
+            )
+            populationMembers.add(chromosome)
+        }
 
-    fun toPopulationData(optimizationRunId: Long, objectiveFunctionId: Long): PopulationData {
-        return PopulationData(
-            optimizationRunId = optimizationRunId,
-            generation = generation,
-            size = populationMembers.size,
-            populationMembers = populationMembers.map { it.toChromosomeData(optimizationRunId, objectiveFunctionId) }.toMutableList()
+        return Population(
+            generation = 1,
+            populationMembers = populationMembers
         )
     }
 
-    fun createExperimentalChromosomes(optimizationRun: OptimizationRun): MutableList<Chromosome> {
+    fun createExperimentalChromosomes(optimizationRun: OptimizationRun, populationMembers: List<Chromosome>): MutableList<Chromosome> {
         return populationMembers.map {
             createExperimentalChromosome(
                 it,
@@ -50,12 +63,13 @@ class Population(
             return@mapIndexed targetChromosomeElement
         }.toMutableList()
         return Chromosome(
-            type = EXPERIMENTAL,
+            type = ChromosomeType.EXPERIMENTAL,
             targetChromosomeId = targetChromosome.id,
             targetPopulationId = targetChromosome.populationId,
             elements = experimentalChromosomeElements,
         )
     }
+
     private fun createDonorChromosome(
         perturbationFactor: Double,
         chromosomeElementDetails: List<ChromosomeElementDetails>
@@ -65,7 +79,7 @@ class Population(
         val donorChromosomeElements = alphaChromosome.elements + (differenceChromosome.elements * perturbationFactor)
         limitChromosomeElementsToBoundaries(chromosomeElementDetails, donorChromosomeElements)
         return Chromosome(
-            type = DONOR,
+            type = ChromosomeType.DONOR,
             elements = donorChromosomeElements,
         )
     }
@@ -85,13 +99,9 @@ class Population(
 
     private fun createDifferenceChromosome(): Chromosome {
         return Chromosome(
-            type = DIFFERENTIAL,
+            type = ChromosomeType.DIFFERENTIAL,
             elements = getRandomMember().elements - getRandomMember().elements,
         )
-    }
-
-    private fun getRandomMember(): Chromosome {
-        return populationMembers.random()
     }
 
 }

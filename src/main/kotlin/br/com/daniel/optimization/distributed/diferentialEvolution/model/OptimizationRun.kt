@@ -1,9 +1,9 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.model
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.TARGET
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationRunData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
+import java.time.ZonedDateTime
 
 class OptimizationRun(
     val id: Long,
@@ -17,32 +17,35 @@ class OptimizationRun(
     var status: OptimizationStatus,
     val objectiveFunctionEvaluationTimeoutSeconds: Long? = null,
     val chromosomeElementsDetails: MutableList<ChromosomeElementDetails>,
+    val timeToFinishInSeconds: Long? = null,
+    val finishedAt: ZonedDateTime? = null,
+    val createdAt: ZonedDateTime
     ) {
     init {
         chromosomeElementsDetails.sortBy { it.position }
     }
 
     constructor(optimizationRunData: OptimizationRunData): this(
-        optimizationRunData.id!!,
-        optimizationRunData.objectiveFunctionId!!,
-        optimizationRunData.populationSize!!,
-        optimizationRunData.crossOverProbability!!,
-        optimizationRunData.perturbationFactor!!,
-        optimizationRunData.valueToReach,
-        optimizationRunData.maxGenerations!!,
-        optimizationRunData.currentGeneration,
-        optimizationRunData.status,
-        optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
-        optimizationRunData.chromosomeElementDetails!!
+        id = optimizationRunData.id!!,
+        objectiveFunctionId = optimizationRunData.objectiveFunctionId!!,
+        populationSize = optimizationRunData.populationSize!!,
+        crossOverProbability = optimizationRunData.crossOverProbability!!,
+        perturbationFactor = optimizationRunData.perturbationFactor!!,
+        valueToReach = optimizationRunData.valueToReach,
+        maxGenerations = optimizationRunData.maxGenerations!!,
+        currentGeneration = optimizationRunData.currentGeneration,
+        status = optimizationRunData.status,
+        objectiveFunctionEvaluationTimeoutSeconds = optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
+        chromosomeElementsDetails = optimizationRunData.chromosomeElementsDetails!!
             .map { ChromosomeElementDetails(it) }
             .toMutableList(),
+        timeToFinishInSeconds = optimizationRunData.timeToFinishInSeconds,
+        finishedAt = optimizationRunData.finishedAt,
+        createdAt = optimizationRunData.createdAt
     )
-
-    val bestSoFarChromosomeId: Int? = null
 
     fun createInitialPopulation(): Population {
         val populationMembers = mutableListOf<Chromosome>()
-        val chromosomeSize = chromosomeElementsDetails.size
         for (iChromosome in 1..populationSize) {
             val chromosomeElements = mutableListOf<Double>()
             for(chromosomeElementDetails in chromosomeElementsDetails) {
@@ -52,7 +55,6 @@ class OptimizationRun(
             }
             val chromosome = Chromosome(
                 type = TARGET,
-                size = chromosomeSize,
                 elements = chromosomeElements
             )
             populationMembers.add(chromosome)

@@ -23,7 +23,7 @@ data class CreateOptimizationRunRequest (
             currentGeneration = 1,
             maxGenerations = this.maxGenerations,
             objectiveFunctionEvaluationTimeoutSeconds = this.objectiveFunctionEvaluationTimeoutSeconds,
-            chromosomeElementDetails = this.chromosomeElementDetails
+            chromosomeElementsDetails = this.chromosomeElementDetails
         )
     }
 }

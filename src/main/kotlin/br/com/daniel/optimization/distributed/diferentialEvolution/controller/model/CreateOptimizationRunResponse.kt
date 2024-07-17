@@ -26,7 +26,7 @@ data class CreateOptimizationRunResponse(
         valueToReach = optimizationRunData.valueToReach,
         maxGenerations = optimizationRunData.maxGenerations,
         objectiveFunctionEvaluationTimeoutSeconds = optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
-        chromosomeElementDetails = optimizationRunData.chromosomeElementDetails,
+        chromosomeElementDetails = optimizationRunData.chromosomeElementsDetails,
         status = optimizationRunData.status
     )
 

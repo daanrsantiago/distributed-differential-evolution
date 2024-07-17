@@ -23,7 +23,6 @@ data class ChromosomeData (
     val optimizationRunId: Long? = null,
     val objectiveFunctionId: Long? = null,
     var fitness: Double? = null,
-    val size: Int,
     val type: ChromosomeType,
     val targetChromosomeId: Long? = null,
     val targetPopulationId: Long? = null,

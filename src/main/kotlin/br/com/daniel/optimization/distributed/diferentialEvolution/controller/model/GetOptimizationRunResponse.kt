@@ -35,7 +35,7 @@ data class GetOptimizationRunResponse (
         bestSoFarChromosome = optimizationRunData.bestSoFarChromosome?.let { ChromosomeResponse(it) },
         objectiveFunctionEvaluationTimeoutSeconds = optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
         status = optimizationRunData.status,
-        chromosomeElementDetails = optimizationRunData.chromosomeElementDetails,
+        chromosomeElementDetails = optimizationRunData.chromosomeElementsDetails,
         timeToFinishInSeconds = optimizationRunData.timeToFinishInSeconds,
         finishedAt = optimizationRunData.finishedAt,
         createdAt = optimizationRunData.createdAt,
