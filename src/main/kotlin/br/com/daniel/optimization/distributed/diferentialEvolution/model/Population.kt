@@ -36,31 +36,18 @@ class Population(
         }.toMutableList()
     }
 
-    fun createExperimentalChromosomes(
-        perturbationFactor: Double,
-        crossoverProbability: Double,
-        chromosomeElementDetails: List<ChromosomeElementDetails>
-    ): MutableList<Chromosome> {
-        return populationMembers.map {
-            createExperimentalChromosome(
-                it,
-                perturbationFactor,
-                crossoverProbability,
-                chromosomeElementDetails
-            )
-        }.toMutableList()
-    }
-
     private fun createExperimentalChromosome(
         targetChromosome: Chromosome,
         perturbationFactor: Double,
         crossoverProbability: Double,
         chromosomeElementDetails: List<ChromosomeElementDetails>
     ): Chromosome {
-        val donorChromosome = createDonorChromosome(targetChromosome, perturbationFactor, chromosomeElementDetails)
+        val donorChromosome = createDonorChromosome(perturbationFactor, chromosomeElementDetails)
         val experimentalChromosomeElements = targetChromosome.elements.mapIndexed { targetChromosomeElementIndex, targetChromosomeElement ->
-            if (Math.random() < crossoverProbability) donorChromosome.elements[targetChromosomeElementIndex]
-            targetChromosomeElement
+            if (Math.random() < crossoverProbability) {
+                return@mapIndexed donorChromosome.elements[targetChromosomeElementIndex]
+            }
+            return@mapIndexed targetChromosomeElement
         }.toMutableList()
         return Chromosome(
             type = EXPERIMENTAL,
@@ -71,17 +58,15 @@ class Population(
         )
     }
     private fun createDonorChromosome(
-        targetChromosome: Chromosome,
         perturbationFactor: Double,
         chromosomeElementDetails: List<ChromosomeElementDetails>
     ): Chromosome {
         val differenceChromosome = createDifferenceChromosome()
-        val donorChromosomeElements = targetChromosome.elements + (differenceChromosome.elements * perturbationFactor)
+        val alphaChromosome = populationMembers.random()
+        val donorChromosomeElements = alphaChromosome.elements + (differenceChromosome.elements * perturbationFactor)
         limitChromosomeElementsToBoundaries(chromosomeElementDetails, donorChromosomeElements)
         return Chromosome(
             type = DONOR,
-            targetChromosomeId = targetChromosome.id,
-            targetPopulationId = targetChromosome.targetPopulationId,
             elements = donorChromosomeElements,
             size = populationMembers.size
         )

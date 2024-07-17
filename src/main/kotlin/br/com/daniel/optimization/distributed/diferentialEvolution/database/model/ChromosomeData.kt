@@ -6,7 +6,12 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 @Entity
-@Table(name = "chromosomes")
+@Table(name = "chromosomes", indexes = [
+    Index(columnList = "chromosomeId", name = "chromosomes_chromosomeId_idx"),
+    Index(columnList = "populationId", name = "chromosomes_populationId_idx"),
+    Index(columnList = "optimizationRunId", name = "chromosomes_optimizationRunId_idx"),
+    Index(columnList = "targetPopulationId", name = "chromosomes_targetPopulationId_idx")
+])
 data class ChromosomeData (
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
@@ -14,6 +19,7 @@ data class ChromosomeData (
     var id: Long? = null,
     @Column(name = "populationId")
     var populationId: Long? = null,
+    @Column(name = "optimizationRunId")
     val optimizationRunId: Long? = null,
     val objectiveFunctionId: Long? = null,
     var fitness: Double? = null,

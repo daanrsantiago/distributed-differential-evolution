@@ -6,7 +6,10 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 @Entity
-@Table(name = "populations")
+@Table(name = "populations", indexes = [
+    Index(columnList = "id", name = "populations_id_idx"),
+    Index(columnList = "optimizationRunId", name = "populations_optimizationRunId_idx")
+])
 class PopulationData(
     @Id
     @GeneratedValue(strategy = SEQUENCE)

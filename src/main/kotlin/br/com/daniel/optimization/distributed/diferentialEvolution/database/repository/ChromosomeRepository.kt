@@ -20,9 +20,9 @@ interface ChromosomeRepository: PagingAndSortingRepository<ChromosomeData, Long>
     @Query(
         """SELECT CASE WHEN COUNT(c) = SUM(CASE WHEN c.evaluationStatus = EVALUATED THEN 1 ELSE 0 END) THEN TRUE ELSE FALSE END
            FROM ChromosomeData c 
-           WHERE c.optimizationRunId = :optimizationRunId"""
+           WHERE (c.populationId = :populationId OR c.targetPopulationId = :populationId)"""
     )
-    fun areAllChromosomesEvaluated(@Param("optimizationRunId") optimizationRunId: Long?): Boolean
+    fun areAllChromosomesEvaluated(@Param("populationId") populationId: Long?): Boolean
 
     fun findAllByPopulationId(populationId: Long?): List<ChromosomeData>
 

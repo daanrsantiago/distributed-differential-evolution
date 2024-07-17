@@ -18,6 +18,8 @@ data class GetOptimizationRunResponse (
     val objectiveFunctionEvaluationTimeoutSeconds: Long?,
     var status: OptimizationStatus,
     val chromosomeElementDetails: MutableList<ChromosomeElementDetailsData>?,
+    val timeToFinishInSeconds: Long?,
+    val finishedAt: ZonedDateTime?,
     val createdAt: ZonedDateTime
 ) {
 
@@ -34,6 +36,8 @@ data class GetOptimizationRunResponse (
         objectiveFunctionEvaluationTimeoutSeconds = optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
         status = optimizationRunData.status,
         chromosomeElementDetails = optimizationRunData.chromosomeElementDetails,
+        timeToFinishInSeconds = optimizationRunData.timeToFinishInSeconds,
+        finishedAt = optimizationRunData.finishedAt,
         createdAt = optimizationRunData.createdAt,
     )
 

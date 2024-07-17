@@ -17,19 +17,12 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
-import org.springframework.http.HttpStatus
-import org.springframework.http.HttpStatus.CREATED
-import org.springframework.http.HttpStatus.NOT_FOUND
+import org.springframework.http.HttpStatus.*
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.util.UUID
+import java.util.*
 
 @RestController
 @RequestMapping(path = ["/optimizationRun"])
@@ -157,10 +150,11 @@ class OptimizationRunController(
         val notEvaluatedChromosomesData = chromosomeRepository
             .getNotEvaluatedChromosomeByOptimizationRunId(optimizationRunId)
         if (notEvaluatedChromosomesData.isEmpty()) {
+            logger.info("No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet")
             throw RestHandledException(
                 ErrorResponse(
-                    NOT_FOUND.value(),
-                    "No chromosome found for evaluation on optimizationRun with id $optimizationRunId"
+                    PROCESSING.value(),
+                    "No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet, comeback later."
                 )
             )
         }

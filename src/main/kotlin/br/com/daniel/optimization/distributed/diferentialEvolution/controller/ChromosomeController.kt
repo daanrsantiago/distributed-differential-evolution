@@ -20,12 +20,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus.BAD_REQUEST
 import org.springframework.http.HttpStatus.NOT_FOUND
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -75,7 +70,7 @@ class ChromosomeController(
 
         val populationData = getPopulationData(populationIdToLook)
 
-        val allPopulationChromosomesEvaluated = chromosomeRepository.areAllChromosomesEvaluated(optimizationRunId)
+        val allPopulationChromosomesEvaluated = chromosomeRepository.areAllChromosomesEvaluated(populationIdToLook)
         if (allPopulationChromosomesEvaluated) {
             val shouldStopOptimizationRun = checkForStopCriteria(optimizationRunData)
             if (!shouldStopOptimizationRun) {
@@ -146,6 +141,9 @@ class ChromosomeController(
         chromosomeData: ChromosomeData,
         changeEvaluationResultRequest: ChangeEvaluationResultRequest
     ) {
+        logger.info("""Chromosome with id ${chromosomeData.id} from optimizationRun ${chromosomeData.optimizationRunId} changedEvaluationStatus to EVALUATED
+                elements: ${chromosomeData.elements?.map { it.value }}
+                fitness ${changeEvaluationResultRequest.fitness}""".trimIndent())
         chromosomeData.fitness = changeEvaluationResultRequest.fitness
         chromosomeData.evaluationStatus = EVALUATED
         chromosomeData.evaluatedAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
@@ -165,7 +163,7 @@ class ChromosomeController(
     }
 
     private fun substituteBestSoFarChromosomeIfNecessary(optimizationRunData: OptimizationRunData, chromosomeData: ChromosomeData) {
-        if (optimizationRunData.bestSoFarChromosome == null || ( optimizationRunData.bestSoFarChromosome!!.fitness!! < chromosomeData.fitness!! )) {
+        if (optimizationRunData.bestSoFarChromosome == null || ( chromosomeData.fitness!! < optimizationRunData.bestSoFarChromosome!!.fitness!! )) {
             logger.info("""Chromosome with id ${chromosomeData.id} is the new best so far for optimizationRun with id ${optimizationRunData.id}
                 elements: ${chromosomeData.elements?.map { it.value }}
                 fitness: ${chromosomeData.fitness}""")
@@ -178,6 +176,8 @@ class ChromosomeController(
         if (optimizationRunData.maxGenerations == optimizationRunData.currentGeneration) {
             logger.info("Changing status of optimizationRun with id ${optimizationRunData.id} to FINISHED ")
             optimizationRunData.status = OptimizationStatus.FINISHED
+            optimizationRunData.finishedAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
+            optimizationRunData.timeToFinishInSeconds = optimizationRunData.finishedAt!!.toEpochSecond() - optimizationRunData.createdAt.toEpochSecond()
             optimizationRunRepository.save(optimizationRunData)
             return true
         }
@@ -191,13 +191,12 @@ class ChromosomeController(
             size = populationData.size
         ))
         logger.info("Saving new population with id ${newPopulationData.id} and optimizationRun with id ${optimizationRun.id}")
-        val currentPopulationChromosomesMap = mapOf(*populationData.populationMembers!!.map { Pair(it.id!!, it) }.toTypedArray())
         val experimentalChromosomes = chromosomeRepository.findAllByTargetPopulationIdAndType(populationData.id, EXPERIMENTAL)
 
-        val selectedChromosomes = experimentalChromosomes.map { experimentalChromosome ->
+        val selectedChromosomes = experimentalChromosomes.mapIndexed { index, experimentalChromosome ->
             var selectedChromosomeData: ChromosomeData
-            val targetChromosome = currentPopulationChromosomesMap[experimentalChromosome.targetChromosomeId]
-            selectedChromosomeData = if (targetChromosome!!.fitness!! > experimentalChromosome.fitness!!) {
+            val targetChromosome = populationData.populationMembers!![index]
+            selectedChromosomeData = if (targetChromosome.fitness!! < experimentalChromosome.fitness!!) {
                 targetChromosome.copy(
                     id = null,
                     populationId = newPopulationData.id,
@@ -207,12 +206,14 @@ class ChromosomeController(
                 experimentalChromosome.copy(
                     id = null,
                     populationId = newPopulationData.id,
+                    targetChromosomeId = null,
+                    targetPopulationId = null,
                     type = TARGET
                 )
             }
             selectedChromosomeData.elements = selectedChromosomeData.elements?.map { it.copy() }?.toMutableList()
             selectedChromosomeData = chromosomeRepository.save(selectedChromosomeData)
-            return@map selectedChromosomeData
+            return@mapIndexed selectedChromosomeData
         }.toMutableList()
 
         return PopulationData(

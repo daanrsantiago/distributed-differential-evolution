@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./optimization-data
+    username: root
+    password: root
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate.ddl-auto: update

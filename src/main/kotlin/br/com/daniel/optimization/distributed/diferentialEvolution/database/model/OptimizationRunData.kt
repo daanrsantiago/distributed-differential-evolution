@@ -29,5 +29,7 @@ class OptimizationRunData(
         joinColumns= [JoinColumn(name = "optimizationRunId")]
     )
     val chromosomeElementDetails: MutableList<ChromosomeElementDetailsData>? = null,
+    var timeToFinishInSeconds: Long? = null,
+    var finishedAt: ZonedDateTime? = null,
     val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
 )
