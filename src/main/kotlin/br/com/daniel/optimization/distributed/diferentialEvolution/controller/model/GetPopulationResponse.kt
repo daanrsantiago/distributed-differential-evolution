@@ -1,24 +1,22 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller.model
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.PopulationData
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.Population
 import java.time.ZonedDateTime
 
 data class GetPopulationResponse (
     val id: Long?,
     val optimizationRunId: Long?,
     val generation: Int?,
-    val size: Int?,
-    var populationMembers: MutableList<ChromosomeResponse>?,
+    var populationMembers: List<ChromosomeResponse>?,
     val createdAt: ZonedDateTime
 ) {
 
-    constructor(populationData: PopulationData): this(
-        id = populationData.id,
-        optimizationRunId = populationData.optimizationRunId,
-        generation = populationData.generation,
-        size = populationData.size,
-        populationMembers = populationData.populationMembers?.map { ChromosomeResponse(it) }?.toMutableList(),
-        createdAt = populationData.createdAt,
+    constructor(population: Population): this(
+        id = population.id,
+        optimizationRunId = population.optimizationRunId,
+        generation = population.generation,
+        populationMembers = population.populationMembers.map { ChromosomeResponse(it) },
+        createdAt = population.createdAt,
     )
 
 }

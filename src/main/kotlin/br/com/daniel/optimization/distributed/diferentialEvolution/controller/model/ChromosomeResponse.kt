@@ -1,13 +1,14 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller.model
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromosome
 import java.time.ZonedDateTime
 
 data class ChromosomeResponse(
     val id: Long,
     val populationId: Long?,
+    val optimizationRunId: Long?,
     val objectiveFunctionId: Long?,
     val type: ChromosomeType,
     val targetChromosomeId: Long?,
@@ -17,25 +18,24 @@ data class ChromosomeResponse(
     val evaluationBeginAt: ZonedDateTime?,
     val evaluatedAt: ZonedDateTime?,
     val fitness: Double?,
-    val size: Int,
     val elements: List<Double>?,
     val createdAt: ZonedDateTime
 ) {
-    constructor(chromosomeData: ChromosomeData): this(
-        chromosomeData.id!!,
-        chromosomeData.populationId,
-        chromosomeData.objectiveFunctionId,
-        chromosomeData.type,
-        chromosomeData.targetChromosomeId,
-        chromosomeData.targetPopulationId,
-        chromosomeData.evaluationStatus,
-        chromosomeData.evaluationId,
-        chromosomeData.evaluationBeginAt,
-        chromosomeData.evaluatedAt,
-        chromosomeData.fitness,
-        chromosomeData.size,
-        chromosomeData.elements?.sortedBy { it.position }?.map { it.value },
-        chromosomeData.createdAt
+    constructor(chromosome: Chromosome): this(
+        chromosome.id!!,
+        chromosome.populationId,
+        chromosome.optimizationRunId,
+        chromosome.objectiveFunctionId,
+        chromosome.type,
+        chromosome.targetChromosomeId,
+        chromosome.targetPopulationId,
+        chromosome.evaluationStatus,
+        chromosome.evaluationId,
+        chromosome.evaluationBeginAt,
+        chromosome.evaluatedAt,
+        chromosome.fitness,
+        chromosome.elements,
+        chromosome.createdAt
     ) {
 
     }

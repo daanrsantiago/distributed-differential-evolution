@@ -4,12 +4,15 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.database.mode
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeElementData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus
+import java.time.ZoneId
 import java.time.ZonedDateTime
 
-class Chromosome(
+data class Chromosome(
     var id: Long? = null,
     var populationId: Long? = null,
-    val fitness: Double? = null,
+    var optimizationRunId: Long? = null,
+    var objectiveFunctionId: Long? = null,
+    var fitness: Double? = null,
     var type: ChromosomeType,
     val targetChromosomeId: Long? = null,
     val targetPopulationId: Long? = null,
@@ -18,28 +21,33 @@ class Chromosome(
     var evaluationBeginAt: ZonedDateTime? = null,
     var evaluatedAt: ZonedDateTime? = null,
     val elements: MutableList<Double>,
+    val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
 ) {
 
     constructor(chromosomeData: ChromosomeData): this(
         id = chromosomeData.id,
         populationId = chromosomeData.populationId,
+        optimizationRunId = chromosomeData.optimizationRunId,
+        objectiveFunctionId = chromosomeData.objectiveFunctionId,
         fitness = chromosomeData.fitness,
         type = chromosomeData.type,
         targetChromosomeId = chromosomeData.targetChromosomeId,
         targetPopulationId = chromosomeData.targetPopulationId,
+        evaluationId = chromosomeData.evaluationId,
         evaluationStatus = chromosomeData.evaluationStatus,
         evaluationBeginAt = chromosomeData.evaluationBeginAt,
         evaluatedAt = chromosomeData.evaluatedAt,
-        elements = chromosomeData.elements!!.sortedBy { it.position }.map { it.value }.toMutableList()
+        elements = chromosomeData.elements!!.sortedBy { it.position }.map { it.value }.toMutableList(),
+        createdAt = chromosomeData.createdAt
     )
 
-    fun toChromosomeData(optimizationRunId: Long, objectiveFunctionId: Long): ChromosomeData {
+    fun toChromosomeData(): ChromosomeData {
         return ChromosomeData(
             id = id,
             populationId = populationId,
-            fitness = fitness,
             optimizationRunId = optimizationRunId,
             objectiveFunctionId = objectiveFunctionId,
+            fitness = fitness,
             type = type,
             targetChromosomeId = targetChromosomeId,
             targetPopulationId = targetPopulationId,
@@ -52,7 +60,8 @@ class Chromosome(
                     position = position,
                     value = value
                 )
-            }.toMutableList()
+            }.toMutableList(),
+            createdAt = createdAt
         )
     }
 

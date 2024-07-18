@@ -1,7 +1,8 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller.model
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeElementDetailsData
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationRunData
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
 
 data class CreateOptimizationRunRequest (
     val objectiveFunctionId: Long,
@@ -11,17 +12,18 @@ data class CreateOptimizationRunRequest (
     val valueToReach: Double? = null,
     val maxGenerations: Int,
     val objectiveFunctionEvaluationTimeoutSeconds: Long,
-    val chromosomeElementDetails: MutableList<ChromosomeElementDetailsData>,
+    val chromosomeElementDetails: MutableList<ChromosomeElementDetails>,
 ) {
-    fun toOptimizationRunData(): OptimizationRunData {
-        return OptimizationRunData(
+    fun toOptimizationRun(): OptimizationRun {
+        return OptimizationRun(
             objectiveFunctionId = this.objectiveFunctionId,
             populationSize = this.populationSize,
             crossOverProbability = this.crossOverProbability,
             perturbationFactor = this.perturbationFactor,
             valueToReach = this.valueToReach,
-            currentGeneration = 1,
             maxGenerations = this.maxGenerations,
+            currentGeneration = 1,
+            status = OptimizationStatus.RUNNING,
             objectiveFunctionEvaluationTimeoutSeconds = this.objectiveFunctionEvaluationTimeoutSeconds,
             chromosomeElementsDetails = this.chromosomeElementDetails
         )

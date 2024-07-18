@@ -18,4 +18,14 @@ data class ChromosomeElementDetails(
         description = chromosomeElementDetailsData.description
     )
 
+    fun toChromosomeElementDetailData(): ChromosomeElementDetailsData {
+        return ChromosomeElementDetailsData(
+            name = name,
+            position = position,
+            lowerBoundary = lowerBoundary,
+            upperBoundary = upperBoundary,
+            description = description
+        )
+    }
+
 }

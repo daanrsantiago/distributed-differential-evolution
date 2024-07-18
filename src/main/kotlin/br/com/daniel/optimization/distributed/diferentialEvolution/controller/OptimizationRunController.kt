@@ -1,18 +1,13 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.*
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeData
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.EVALUATING
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationRunData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus.FINISHED
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.PopulationData
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ChromosomeRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ObjectiveFunctionRepository
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.OptimizationRunRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.PopulationRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
-import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
-import br.com.daniel.optimization.distributed.diferentialEvolution.model.Population
+import br.com.daniel.optimization.distributed.diferentialEvolution.service.ChromosomeService
+import br.com.daniel.optimization.distributed.diferentialEvolution.service.OptimizationRunService
+import br.com.daniel.optimization.distributed.diferentialEvolution.service.PopulationService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
@@ -20,25 +15,24 @@ import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.util.*
 
 @RestController
 @RequestMapping(path = ["/optimizationRun"])
 class OptimizationRunController(
-    val optimizationRunRepository: OptimizationRunRepository,
+    val populationService: PopulationService,
+    val optimizationRunService: OptimizationRunService,
     val objectiveFunctionRepository: ObjectiveFunctionRepository,
     val populationRepository: PopulationRepository,
-    val chromosomeRepository: ChromosomeRepository
+    val chromosomeService: ChromosomeService
 ) {
 
     val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
     @GetMapping("/{optimizationRunId}")
     fun getOptimizationRunById(@PathVariable optimizationRunId: Long): ResponseEntity<GetOptimizationRunResponse> {
-        val optimizationRunData = getOptimizationRunData(optimizationRunId)
-        return ResponseEntity.ok(GetOptimizationRunResponse(optimizationRunData))
+        val optimizationRun = optimizationRunService.getOptimizationRun(optimizationRunId)
+        return ResponseEntity.ok(GetOptimizationRunResponse(optimizationRun))
     }
 
     @GetMapping("/{optimizationRunId}/populations")
@@ -53,23 +47,19 @@ class OptimizationRunController(
         createOptimizationRunRequest: CreateOptimizationRunRequest
     ): ResponseEntity<CreateOptimizationRunResponse> {
         checksIfObjectiveFunctionExists(createOptimizationRunRequest.objectiveFunctionId)
-        var optimizationRunData = createOptimizationRunRequest.toOptimizationRunData()
-        optimizationRunData = optimizationRunRepository.save(optimizationRunData)
-        val optimizationRun = OptimizationRun(optimizationRunData)
+        var optimizationRun = createOptimizationRunRequest.toOptimizationRun()
+        optimizationRun = optimizationRunService.saveOptimizationRun(optimizationRun)
 
-        val initialPopulation = optimizationRun.createInitialPopulation()
-        var initialPopulationData = initialPopulation.toPopulationData(optimizationRunData.id!!, optimizationRunData.objectiveFunctionId!!)
-        initialPopulationData = populationRepository.save(initialPopulationData)
-        fillAndSavePopulationMembersPopulationIds(initialPopulationData, initialPopulation)
+        var initialPopulation = optimizationRunService.createInitialPopulation(optimizationRun)
+        initialPopulation = populationService.savePopulation(initialPopulation)
 
-        val experimentalChromosomesData = initialPopulation
-            .createExperimentalChromosomes(optimizationRun)
-            .map { it.toChromosomeData(optimizationRunData.id!!, optimizationRunData.objectiveFunctionId!!) }
-        chromosomeRepository.saveAll(experimentalChromosomesData)
+        val experimentalChromosomes = optimizationRunService
+            .createExperimentalChromosomes(optimizationRun, initialPopulation.populationMembers)
+        chromosomeService.saveChromosomes(experimentalChromosomes)
 
         return ResponseEntity
             .status(CREATED)
-            .body(CreateOptimizationRunResponse(optimizationRunData))
+            .body(CreateOptimizationRunResponse(optimizationRun))
     }
 
     private fun checksIfObjectiveFunctionExists(objectiveFunctionId: Long) {
@@ -83,81 +73,29 @@ class OptimizationRunController(
         }
     }
 
-    private fun fillAndSavePopulationMembersPopulationIds(
-        initialPopulationData: PopulationData,
-        initialPopulation: Population
-    ) {
-        initialPopulationData.populationMembers!!.forEachIndexed { index, chromosomeData ->
-            val initialPopulationMember = initialPopulation.populationMembers[index]
-            initialPopulationMember.populationId = initialPopulationData.id
-            initialPopulationMember.id = chromosomeData.id
-
-            chromosomeData.populationId = initialPopulationData.id
-            chromosomeRepository.save(chromosomeData)
-        }
-    }
-
     @GetMapping("/{optimizationRunId}/chromosome/notEvaluated")
     fun getNotEvaluatedChromosome(
         @PathVariable("optimizationRunId") optimizationRunId: Long
     ): ResponseEntity<OptimizationRunChromosomeResponse> {
-        val optimizationRunData = getOptimizationRunData(optimizationRunId)
-        if (optimizationRunData.status == FINISHED) {
+        val optimizationRun = optimizationRunService.getOptimizationRun(optimizationRunId)
+        if (optimizationRun.status == FINISHED) {
             return ResponseEntity.ok(
                 OptimizationRunChromosomeResponse(
-                    optimizationRunId = optimizationRunId,
-                    optimizationStatus = optimizationRunData.status
+                    optimizationRunId = optimizationRun.id!!,
+                    optimizationStatus = optimizationRun.status
                 )
             )
         }
 
-        var notEvaluatedChromosomeData = getNotEvaluatedChromosomeData(optimizationRunId)
-        notEvaluatedChromosomeData = fillEvaluationDetails(notEvaluatedChromosomeData)
+        val notEvaluatedChromosomeData = chromosomeService.getChromosomeForEvaluation(optimizationRunId)
         val chromosomeResponse = ChromosomeResponse(notEvaluatedChromosomeData)
 
         val optimizationRunChromosomeResponse = OptimizationRunChromosomeResponse(
-            optimizationRunId = optimizationRunData.id!!,
-            optimizationStatus = optimizationRunData.status,
+            optimizationRunId = optimizationRun.id!!,
+            optimizationStatus = optimizationRun.status,
             chromosome = chromosomeResponse
         )
         return ResponseEntity.ok(optimizationRunChromosomeResponse)
     }
 
-    private fun fillEvaluationDetails(
-        notEvaluatedChromosomeData: ChromosomeData
-    ): ChromosomeData {
-        var notEvaluatedChromosomeData1 = notEvaluatedChromosomeData
-        notEvaluatedChromosomeData1.evaluationStatus = EVALUATING
-        notEvaluatedChromosomeData1.evaluationId = UUID.randomUUID().toString()
-        notEvaluatedChromosomeData1.evaluationBeginAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
-        notEvaluatedChromosomeData1 = chromosomeRepository.save(notEvaluatedChromosomeData1)
-        logger.info("Chromosome with id ${notEvaluatedChromosomeData1.id} from optimizationRun with id ${notEvaluatedChromosomeData.optimizationRunId} changed evaluationStatus to EVALUATING")
-        return notEvaluatedChromosomeData1
-    }
-
-    private fun getOptimizationRunData(optimizationRunId: Long): OptimizationRunData =
-        optimizationRunRepository.findById(optimizationRunId)
-            .orElseThrow {
-                RestHandledException(
-                    ErrorResponse(
-                        NOT_FOUND.value(),
-                        "OptimizationRun with id $optimizationRunId not found"
-                    )
-                )
-            }
-
-    private fun getNotEvaluatedChromosomeData(optimizationRunId: Long): ChromosomeData {
-        val notEvaluatedChromosomesData = chromosomeRepository
-            .getNotEvaluatedChromosomeByOptimizationRunId(optimizationRunId)
-        if (notEvaluatedChromosomesData.isEmpty()) {
-            logger.info("No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet")
-            throw RestHandledException(
-                ErrorResponse(
-                    PROCESSING.value(),
-                    "No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet, comeback later."
-                )
-            )
-        }
-        return notEvaluatedChromosomesData.first()
-    }
 }

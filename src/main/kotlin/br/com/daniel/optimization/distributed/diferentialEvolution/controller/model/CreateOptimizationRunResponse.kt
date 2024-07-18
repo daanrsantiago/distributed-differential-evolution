@@ -1,8 +1,8 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller.model
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeElementDetailsData
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationRunData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
 
 data class CreateOptimizationRunResponse(
     val id: Long? = null,
@@ -13,21 +13,21 @@ data class CreateOptimizationRunResponse(
     val valueToReach: Double? = null,
     val maxGenerations: Int? = null,
     val objectiveFunctionEvaluationTimeoutSeconds: Long?,
-    val chromosomeElementDetails: List<ChromosomeElementDetailsData>? = null,
+    val chromosomeElementDetails: List<ChromosomeElementDetails>? = null,
     val status: OptimizationStatus? = null,
 ) {
 
-    constructor(optimizationRunData: OptimizationRunData): this(
-        id = optimizationRunData.id,
-        objectiveFunctionId = optimizationRunData.objectiveFunctionId,
-        populationSize = optimizationRunData.populationSize,
-        crossOverProbability = optimizationRunData.crossOverProbability,
-        perturbationFactor = optimizationRunData.perturbationFactor,
-        valueToReach = optimizationRunData.valueToReach,
-        maxGenerations = optimizationRunData.maxGenerations,
-        objectiveFunctionEvaluationTimeoutSeconds = optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
-        chromosomeElementDetails = optimizationRunData.chromosomeElementsDetails,
-        status = optimizationRunData.status
+    constructor(optimizationRun: OptimizationRun): this(
+        id = optimizationRun.id,
+        objectiveFunctionId = optimizationRun.objectiveFunctionId,
+        populationSize = optimizationRun.populationSize,
+        crossOverProbability = optimizationRun.crossOverProbability,
+        perturbationFactor = optimizationRun.perturbationFactor,
+        valueToReach = optimizationRun.valueToReach,
+        maxGenerations = optimizationRun.maxGenerations,
+        objectiveFunctionEvaluationTimeoutSeconds = optimizationRun.objectiveFunctionEvaluationTimeoutSeconds,
+        chromosomeElementDetails = optimizationRun.chromosomeElementsDetails,
+        status = optimizationRun.status
     )
 
 }

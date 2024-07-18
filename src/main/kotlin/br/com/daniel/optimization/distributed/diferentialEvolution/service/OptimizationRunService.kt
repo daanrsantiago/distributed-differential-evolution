@@ -1,7 +1,11 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.service
 
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.EXPERIMENTAL
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.OptimizationRunRepository
+import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromosome
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
@@ -9,12 +13,35 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.model.Populat
 import br.com.daniel.optimization.distributed.diferentialEvolution.util.minus
 import br.com.daniel.optimization.distributed.diferentialEvolution.util.plus
 import br.com.daniel.optimization.distributed.diferentialEvolution.util.times
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 @Service
 class OptimizationRunService(
-    val optimizationRunRepository: OptimizationRunRepository
+    val optimizationRunRepository: OptimizationRunRepository,
+    val populationService: PopulationService,
+    val chromosomeService: ChromosomeService,
 ) {
+
+    val logger: Logger = LoggerFactory.getLogger(this::class.java)
+
+    fun getOptimizationRun(optimizationRunId: Long): OptimizationRun {
+        val optimizationRunData = optimizationRunRepository
+            .findById(optimizationRunId)
+            .orElseThrow {
+                RestHandledException(
+                    ErrorResponse(
+                        HttpStatus.NOT_FOUND.value(),
+                        "OptimizationRun with id $optimizationRunId not found"
+                    )
+                )
+            }!!
+        return OptimizationRun(optimizationRunData)
+    }
 
     fun createInitialPopulation(optimizationRun: OptimizationRun): Population {
         val populationMembers = mutableListOf<Chromosome>()
@@ -26,6 +53,8 @@ class OptimizationRunService(
                 chromosomeElements.add(chromosomeElementValue)
             }
             val chromosome = Chromosome(
+                optimizationRunId = optimizationRun.id,
+                objectiveFunctionId = optimizationRun.objectiveFunctionId,
                 type = ChromosomeType.TARGET,
                 elements = chromosomeElements
             )
@@ -33,37 +62,39 @@ class OptimizationRunService(
         }
 
         return Population(
+            optimizationRunId = optimizationRun.id,
             generation = 1,
             populationMembers = populationMembers
         )
     }
 
-    fun createExperimentalChromosomes(optimizationRun: OptimizationRun, populationMembers: List<Chromosome>): MutableList<Chromosome> {
+    fun createExperimentalChromosomes(optimizationRun: OptimizationRun, populationMembers: List<Chromosome>): List<Chromosome> {
         return populationMembers.map {
+            val populationMembersToUse = populationMembers.shuffled().subList(0,3)
             createExperimentalChromosome(
                 it,
-                optimizationRun.perturbationFactor,
-                optimizationRun.crossOverProbability,
-                optimizationRun.chromosomeElementsDetails
+                populationMembersToUse,
+                optimizationRun
             )
-        }.toMutableList()
+        }
     }
 
     private fun createExperimentalChromosome(
         targetChromosome: Chromosome,
-        perturbationFactor: Double,
-        crossoverProbability: Double,
-        chromosomeElementDetails: List<ChromosomeElementDetails>
+        populationMembersToUse: List<Chromosome>,
+        optimizationRun: OptimizationRun
     ): Chromosome {
-        val donorChromosome = createDonorChromosome(perturbationFactor, chromosomeElementDetails)
+        val donorChromosome = createDonorChromosome(populationMembersToUse, optimizationRun.perturbationFactor, optimizationRun.chromosomeElementsDetails)
         val experimentalChromosomeElements = targetChromosome.elements.mapIndexed { targetChromosomeElementIndex, targetChromosomeElement ->
-            if (Math.random() < crossoverProbability) {
+            if (Math.random() < optimizationRun.crossOverProbability) {
                 return@mapIndexed donorChromosome.elements[targetChromosomeElementIndex]
             }
             return@mapIndexed targetChromosomeElement
         }.toMutableList()
         return Chromosome(
-            type = ChromosomeType.EXPERIMENTAL,
+            optimizationRunId = optimizationRun.id,
+            objectiveFunctionId = optimizationRun.objectiveFunctionId,
+            type = EXPERIMENTAL,
             targetChromosomeId = targetChromosome.id,
             targetPopulationId = targetChromosome.populationId,
             elements = experimentalChromosomeElements,
@@ -71,12 +102,14 @@ class OptimizationRunService(
     }
 
     private fun createDonorChromosome(
+        populationMembersToUse: List<Chromosome>,
         perturbationFactor: Double,
         chromosomeElementDetails: List<ChromosomeElementDetails>
     ): Chromosome {
-        val differenceChromosome = createDifferenceChromosome()
-        val alphaChromosome = populationMembers.random()
-        val donorChromosomeElements = alphaChromosome.elements + (differenceChromosome.elements * perturbationFactor)
+        val alphaChromosome = populationMembersToUse[0]
+        val betaChromosome = populationMembersToUse[1]
+        val gamaChromosome = populationMembersToUse[2]
+        val donorChromosomeElements = alphaChromosome.elements + (betaChromosome.elements - gamaChromosome.elements) * perturbationFactor
         limitChromosomeElementsToBoundaries(chromosomeElementDetails, donorChromosomeElements)
         return Chromosome(
             type = ChromosomeType.DONOR,
@@ -97,11 +130,72 @@ class OptimizationRunService(
         }
     }
 
-    private fun createDifferenceChromosome(): Chromosome {
-        return Chromosome(
-            type = ChromosomeType.DIFFERENTIAL,
-            elements = getRandomMember().elements - getRandomMember().elements,
+    fun advanceGeneration(optimizationRun: OptimizationRun, population: Population) {
+        optimizationRun.currentGeneration += 1
+        saveOptimizationRun(optimizationRun)
+        logger.info("Advancing generation to ${optimizationRun.currentGeneration} on optimizationRun with id ${optimizationRun.id}")
+        var newPopulation = Population(
+            optimizationRunId = optimizationRun.id,
+            generation = optimizationRun.currentGeneration,
+            populationMembers = performSelection(optimizationRun, population).toMutableList()
         )
+        newPopulation = populationService.savePopulation(newPopulation)
+        val newExperimentalChromosomes = createExperimentalChromosomes(optimizationRun, newPopulation.populationMembers)
+        chromosomeService.saveChromosomes(newExperimentalChromosomes)
+    }
+
+    fun performSelection(
+        optimizationRun: OptimizationRun,
+        population: Population,
+    ): List<Chromosome> {
+        logger.info("Performing selection on population with id ${population.id} and optimizationRun with id ${optimizationRun.id}")
+        val experimentalChromosomes = chromosomeService.getExperimentalChromosomesByTargetPopulationId(population.id!!)
+        val targetChromosomeMap = population.populationMembers.associateBy { it.id!! }
+        return experimentalChromosomes.map { experimentalChromosome ->
+            val targetChromosome = targetChromosomeMap[experimentalChromosome.targetChromosomeId]
+            if (targetChromosome!!.fitness!! < experimentalChromosome.fitness!!) {
+                return@map targetChromosome.copy(
+                    id = null,
+                    populationId = null,
+                    type = ChromosomeType.TARGET
+                )
+            } else {
+                return@map experimentalChromosome.copy(
+                    id = null,
+                    populationId = null,
+                    targetChromosomeId = null,
+                    targetPopulationId = null,
+                    type = ChromosomeType.TARGET
+                )
+            }
+        }
+    }
+
+    fun substituteBestSoFarChromosomeIfNecessary(optimizationRun: OptimizationRun, chromosome: Chromosome) {
+        if (optimizationRun.bestSoFarChromosome == null || ( chromosome.fitness!! < optimizationRun.bestSoFarChromosome!!.fitness!! )) {
+            logger.info("""Chromosome with id ${chromosome.id} is the new best so far for optimizationRun with id ${optimizationRun.id}
+                elements: ${chromosome.elements}
+                fitness: ${chromosome.fitness}""")
+            optimizationRun.bestSoFarChromosome = chromosome
+            optimizationRunRepository.save(optimizationRun.toOptimizationRunData())
+        }
+    }
+
+    fun checkForStopCriteria(optimizationRun: OptimizationRun): Boolean {
+        if (optimizationRun.maxGenerations == optimizationRun.currentGeneration) {
+            logger.info("Changing status of optimizationRun with id ${optimizationRun.id} to FINISHED ")
+            optimizationRun.status = OptimizationStatus.FINISHED
+            optimizationRun.finishedAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
+            optimizationRun.timeToFinishInSeconds = optimizationRun.finishedAt!!.toEpochSecond() - optimizationRun.createdAt!!.toEpochSecond()
+            optimizationRunRepository.save(optimizationRun.toOptimizationRunData())
+            return true
+        }
+        return false
+    }
+
+    fun saveOptimizationRun(optimizationRun: OptimizationRun): OptimizationRun {
+        val savedOptimizationRun = optimizationRunRepository.save(optimizationRun.toOptimizationRunData())
+        return OptimizationRun(savedOptimizationRun)
     }
 
 }

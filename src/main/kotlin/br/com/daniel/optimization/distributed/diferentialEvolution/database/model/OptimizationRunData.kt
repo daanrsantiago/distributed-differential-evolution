@@ -31,5 +31,9 @@ class OptimizationRunData(
     val chromosomeElementsDetails: MutableList<ChromosomeElementDetailsData>? = null,
     var timeToFinishInSeconds: Long? = null,
     var finishedAt: ZonedDateTime? = null,
-    val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
-)
+    val createdAt: ZonedDateTime? = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
+) {
+    init {
+        chromosomeElementsDetails?.sortBy { it.position }
+    }
+}

@@ -7,7 +7,7 @@ close all
 
 while true
    
-    [chromosome, isOptimizationFinished, shouldWait] = getNotEvaluatedChromosome(2);
+    [chromosome, isOptimizationFinished, shouldWait] = getNotEvaluatedChromosome(1);
     
     if (isOptimizationFinished)
         break
