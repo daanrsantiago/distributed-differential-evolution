@@ -3,12 +3,14 @@ package br.com.daniel.optimization.distributed.diferentialEvolution.controller.m
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationStrategy
 import java.time.ZonedDateTime
 
 data class GetOptimizationRunResponse (
     val id: Long?,
     val objectiveFunctionId: Long?,
     val populationSize: Int?,
+    val strategy: OptimizationStrategy?,
     val crossOverProbability: Double?,
     val perturbationFactor: Double?,
     val valueToReach: Double?,
@@ -27,6 +29,7 @@ data class GetOptimizationRunResponse (
         id = optimizationRun.id!!,
         objectiveFunctionId = optimizationRun.objectiveFunctionId,
         populationSize = optimizationRun.populationSize,
+        strategy = optimizationRun.strategy,
         crossOverProbability = optimizationRun.crossOverProbability,
         perturbationFactor = optimizationRun.perturbationFactor,
         valueToReach = optimizationRun.valueToReach,

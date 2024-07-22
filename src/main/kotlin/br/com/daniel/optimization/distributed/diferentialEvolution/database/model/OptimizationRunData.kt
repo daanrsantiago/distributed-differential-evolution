@@ -1,5 +1,7 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.database.model
 
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationStrategy
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationStrategy.DE_RAND_1_BIN
 import jakarta.persistence.*
 import jakarta.persistence.GenerationType.SEQUENCE
 import java.time.ZoneId
@@ -13,6 +15,7 @@ class OptimizationRunData(
     val id: Long? = null,
     val objectiveFunctionId: Long? = null,
     val populationSize: Int? = null,
+    val strategy: OptimizationStrategy = DE_RAND_1_BIN,
     val crossOverProbability: Double? = null,
     val perturbationFactor: Double? = null,
     val valueToReach: Double? = null,

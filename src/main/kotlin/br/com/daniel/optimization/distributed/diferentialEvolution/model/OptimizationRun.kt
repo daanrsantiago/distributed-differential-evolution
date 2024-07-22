@@ -2,6 +2,7 @@ package br.com.daniel.optimization.distributed.diferentialEvolution.model
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationRunData
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationStrategy.DE_RAND_1_BIN
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -9,6 +10,7 @@ class OptimizationRun(
     val id: Long? = null,
     val objectiveFunctionId: Long,
     val populationSize: Int,
+    val strategy: OptimizationStrategy = DE_RAND_1_BIN,
     val crossOverProbability: Double,
     val perturbationFactor: Double,
     val valueToReach: Double? = null,
@@ -30,6 +32,7 @@ class OptimizationRun(
         id = optimizationRunData.id!!,
         objectiveFunctionId = optimizationRunData.objectiveFunctionId!!,
         populationSize = optimizationRunData.populationSize!!,
+        strategy = optimizationRunData.strategy,
         crossOverProbability = optimizationRunData.crossOverProbability!!,
         perturbationFactor = optimizationRunData.perturbationFactor!!,
         valueToReach = optimizationRunData.valueToReach,
@@ -51,6 +54,7 @@ class OptimizationRun(
             id = id,
             objectiveFunctionId= objectiveFunctionId,
             populationSize = populationSize,
+            strategy = strategy,
             crossOverProbability = crossOverProbability,
             perturbationFactor = perturbationFactor,
             valueToReach = valueToReach,

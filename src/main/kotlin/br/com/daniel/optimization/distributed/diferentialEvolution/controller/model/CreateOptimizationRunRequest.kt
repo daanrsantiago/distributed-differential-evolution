@@ -3,10 +3,12 @@ package br.com.daniel.optimization.distributed.diferentialEvolution.controller.m
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationStrategy
 
 data class CreateOptimizationRunRequest (
     val objectiveFunctionId: Long,
     val populationSize: Int,
+    val strategy: OptimizationStrategy = OptimizationStrategy.DE_RAND_1_BIN,
     val crossOverProbability: Double,
     val perturbationFactor: Double,
     val valueToReach: Double? = null,
@@ -18,6 +20,7 @@ data class CreateOptimizationRunRequest (
         return OptimizationRun(
             objectiveFunctionId = this.objectiveFunctionId,
             populationSize = this.populationSize,
+            strategy = this.strategy,
             crossOverProbability = this.crossOverProbability,
             perturbationFactor = this.perturbationFactor,
             valueToReach = this.valueToReach,
