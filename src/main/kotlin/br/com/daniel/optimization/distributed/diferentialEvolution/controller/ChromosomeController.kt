@@ -1,8 +1,8 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ChangeEvaluationResultRequest
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ChromosomeResponse
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ErrorResponse
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.ChangeEvaluationResultRequest
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ChromosomeResponse
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.*
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.*
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException

@@ -1,4 +1,4 @@
-package br.com.daniel.optimization.distributed.diferentialEvolution.controller.model
+package br.com.daniel.optimization.distributed.diferentialEvolution.controller.response
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 

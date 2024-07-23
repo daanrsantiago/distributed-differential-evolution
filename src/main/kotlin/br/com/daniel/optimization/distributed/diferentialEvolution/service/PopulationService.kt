@@ -1,6 +1,6 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.service
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ErrorResponse
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ChromosomeRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.PopulationRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException

@@ -1,6 +1,6 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.GetPopulationResponse
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.GetPopulationResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.service.PopulationService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping

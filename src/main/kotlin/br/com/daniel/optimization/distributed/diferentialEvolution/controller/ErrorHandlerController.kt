@@ -1,6 +1,6 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ErrorResponse
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler

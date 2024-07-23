@@ -1,4 +1,4 @@
-package br.com.daniel.optimization.distributed.diferentialEvolution.controller.model
+package br.com.daniel.optimization.distributed.diferentialEvolution.controller.request
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails

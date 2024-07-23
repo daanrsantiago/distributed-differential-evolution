@@ -1,4 +1,4 @@
-package br.com.daniel.optimization.distributed.diferentialEvolution.controller.model
+package br.com.daniel.optimization.distributed.diferentialEvolution.controller.request
 
 data class ChangeEvaluationResultRequest(
     val fitness: Double,

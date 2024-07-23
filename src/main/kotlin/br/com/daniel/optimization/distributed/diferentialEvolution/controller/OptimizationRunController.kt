@@ -1,6 +1,7 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.*
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.CreateOptimizationRunRequest
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.*
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus.FINISHED
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ObjectiveFunctionRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.PopulationRepository
@@ -36,9 +37,9 @@ class OptimizationRunController(
     }
 
     @GetMapping("/{optimizationRunId}/populations")
-    fun getOptimizationRunPopulationsById(@PathVariable optimizationRunId: Long, pageable: Pageable): ResponseEntity<Page<GetOptimizationRunPopulations>> {
+    fun getOptimizationRunPopulationsById(@PathVariable optimizationRunId: Long, pageable: Pageable): ResponseEntity<Page<GetOptimizationRunPopulationsResponse>> {
         val optimizationRunPopulationsPage = populationRepository.findAllByOptimizationRunId(optimizationRunId, pageable)
-        return ResponseEntity.ok(optimizationRunPopulationsPage.map { GetOptimizationRunPopulations(it) })
+        return ResponseEntity.ok(optimizationRunPopulationsPage.map { GetOptimizationRunPopulationsResponse(it) })
     }
 
     @PostMapping

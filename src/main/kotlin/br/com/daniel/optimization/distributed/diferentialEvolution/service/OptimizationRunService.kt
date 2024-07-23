@@ -1,6 +1,6 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.service
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ErrorResponse
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.EXPERIMENTAL
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
