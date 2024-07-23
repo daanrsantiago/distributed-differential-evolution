@@ -36,3 +36,4 @@ build/
 
 ### Mac OS ###
 .DS_Store
+/examples/kotlin/distributed-differential-evolution-client/.idea/
