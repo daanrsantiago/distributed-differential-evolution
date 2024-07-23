@@ -4,13 +4,11 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.controller.mo
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ChromosomeResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.*
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.TARGET
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.*
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromosome
 import br.com.daniel.optimization.distributed.diferentialEvolution.service.ChromosomeService
 import br.com.daniel.optimization.distributed.diferentialEvolution.service.OptimizationRunService
-import br.com.daniel.optimization.distributed.diferentialEvolution.service.PopulationService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus.BAD_REQUEST
@@ -23,7 +21,6 @@ import org.springframework.web.bind.annotation.*
 class ChromosomeController(
     val chromosomeService: ChromosomeService,
     val optimizationRunService: OptimizationRunService,
-    val populationService: PopulationService
 ) {
 
     @GetMapping("/{chromosomeId}")
@@ -46,26 +43,10 @@ class ChromosomeController(
         changeEvaluationResultRequest: ChangeEvaluationResultRequest
     ): ResponseEntity<ChromosomeResponse> {
         var chromosome = chromosomeService.getChromosome(chromosomeId)
-        val populationId = chromosome.populationId
-        val targetPopulationId = chromosome.targetPopulationId
-        val populationIdToLook = if (chromosome.type == TARGET) populationId!! else targetPopulationId!!
 
         checkIfChromosomeIsEvaluatingOrTimeout(chromosome)
         checkIfEvaluationIdIsTheSame(chromosome, changeEvaluationResultRequest.evaluationId)
         chromosome = chromosomeService.saveEvaluatedChromosome(chromosome, changeEvaluationResultRequest.fitness)
-
-        val optimizationRun = optimizationRunService.getOptimizationRun(chromosome.optimizationRunId!!)
-        optimizationRunService.substituteBestSoFarChromosomeIfNecessary(optimizationRun, chromosome)
-
-        val population = populationService.getPopulation(populationIdToLook)
-
-        val allPopulationChromosomesEvaluated = chromosomeService.areAllChromosomesEvaluated(populationIdToLook)
-        if (allPopulationChromosomesEvaluated) {
-            val shouldStopOptimizationRun = optimizationRunService.checkForStopCriteria(optimizationRun)
-            if (!shouldStopOptimizationRun) {
-                optimizationRunService.advanceGeneration(optimizationRun, population)
-            }
-        }
 
         return ResponseEntity.ok(ChromosomeResponse(chromosome))
     }

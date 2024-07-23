@@ -1,6 +1,7 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.service
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.model.ErrorResponse
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.EXPERIMENTAL
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ChromosomeRepository
@@ -8,6 +9,7 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.exception.Res
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromosome
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
@@ -18,8 +20,11 @@ import java.util.*
 
 @Service
 class ChromosomeService(
-    val chromosomeRepository: ChromosomeRepository
+    val chromosomeRepository: ChromosomeRepository,
+    val populationService: PopulationService
 ) {
+    @set: Autowired
+    lateinit var optimizationRunService: OptimizationRunService
 
     val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
@@ -76,6 +81,24 @@ class ChromosomeService(
         chromosome.evaluationStatus = EvaluationStatus.EVALUATED
         chromosome.evaluatedAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
         chromosomeRepository.save(chromosome.toChromosomeData())
+
+        val populationId = chromosome.populationId
+        val targetPopulationId = chromosome.targetPopulationId
+        val populationIdToLook = if (chromosome.type == ChromosomeType.TARGET) populationId!! else targetPopulationId!!
+
+        val optimizationRun = optimizationRunService.getOptimizationRun(chromosome.optimizationRunId!!)
+        optimizationRunService.substituteBestSoFarChromosomeIfNecessary(optimizationRun, chromosome)
+
+        val population = populationService.getPopulation(populationIdToLook)
+
+        val allPopulationChromosomesEvaluated = this.areAllChromosomesEvaluated(populationIdToLook)
+        if (allPopulationChromosomesEvaluated) {
+            val shouldStopOptimizationRun = optimizationRunService.checkForStopCriteria(optimizationRun)
+            if (!shouldStopOptimizationRun) {
+                optimizationRunService.advanceGeneration(optimizationRun, population)
+            }
+        }
+
         return chromosome
     }
 

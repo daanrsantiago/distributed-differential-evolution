@@ -10,11 +10,9 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromos
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Population
-import br.com.daniel.optimization.distributed.diferentialEvolution.util.minus
-import br.com.daniel.optimization.distributed.diferentialEvolution.util.plus
-import br.com.daniel.optimization.distributed.diferentialEvolution.util.times
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.time.ZoneId
@@ -24,8 +22,9 @@ import java.time.ZonedDateTime
 class OptimizationRunService(
     val optimizationRunRepository: OptimizationRunRepository,
     val populationService: PopulationService,
-    val chromosomeService: ChromosomeService,
 ) {
+    @set: Autowired
+    lateinit var chromosomeService: ChromosomeService
 
     val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
@@ -69,11 +68,10 @@ class OptimizationRunService(
     }
 
     fun createExperimentalChromosomes(optimizationRun: OptimizationRun, populationMembers: List<Chromosome>): List<Chromosome> {
-        return populationMembers.map {
-            val populationMembersToUse = populationMembers.shuffled().subList(0,3)
+        return populationMembers.map { targetChromosome ->
             createExperimentalChromosome(
-                it,
-                populationMembersToUse,
+                targetChromosome,
+                populationMembers,
                 optimizationRun
             )
         }
@@ -81,10 +79,10 @@ class OptimizationRunService(
 
     private fun createExperimentalChromosome(
         targetChromosome: Chromosome,
-        populationMembersToUse: List<Chromosome>,
+        populationMembers: List<Chromosome>,
         optimizationRun: OptimizationRun
     ): Chromosome {
-        val donorChromosome = createDonorChromosome(populationMembersToUse, optimizationRun.perturbationFactor, optimizationRun.chromosomeElementsDetails)
+        val donorChromosome = createDonorChromosome(populationMembers, optimizationRun.perturbationFactor, optimizationRun)
         val experimentalChromosomeElements = targetChromosome.elements.mapIndexed { targetChromosomeElementIndex, targetChromosomeElement ->
             if (Math.random() < optimizationRun.crossOverProbability) {
                 return@mapIndexed donorChromosome.elements[targetChromosomeElementIndex]
@@ -102,15 +100,12 @@ class OptimizationRunService(
     }
 
     private fun createDonorChromosome(
-        populationMembersToUse: List<Chromosome>,
+        populationMembers: List<Chromosome>,
         perturbationFactor: Double,
-        chromosomeElementDetails: List<ChromosomeElementDetails>
+        optimizationRun: OptimizationRun
     ): Chromosome {
-        val alphaChromosome = populationMembersToUse[0]
-        val betaChromosome = populationMembersToUse[1]
-        val gamaChromosome = populationMembersToUse[2]
-        val donorChromosomeElements = alphaChromosome.elements + (betaChromosome.elements - gamaChromosome.elements) * perturbationFactor
-        limitChromosomeElementsToBoundaries(chromosomeElementDetails, donorChromosomeElements)
+        val donorChromosomeElements = optimizationRun.strategy.createDonorChromosomeElements(populationMembers, perturbationFactor)
+        limitChromosomeElementsToBoundaries(optimizationRun.chromosomeElementsDetails, donorChromosomeElements)
         return Chromosome(
             type = ChromosomeType.DONOR,
             elements = donorChromosomeElements,
