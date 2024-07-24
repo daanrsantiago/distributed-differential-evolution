@@ -5,6 +5,8 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.database.repo
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.PopulationRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Population
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 
@@ -26,6 +28,10 @@ class PopulationService(
                 )
             }!!
         return Population(populationData)
+    }
+
+    fun getPopulationPageByOptimizationRunId(optimizationRunId: Long, pageable: Pageable): Page<Population> {
+        return populationRepository.findAllByOptimizationRunId(optimizationRunId, pageable).map { Population(it) }
     }
 
     fun savePopulation(population: Population): Population {

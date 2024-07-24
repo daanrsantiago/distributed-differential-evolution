@@ -1,6 +1,7 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.GetPopulationResponse
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.GetPopulationStatisticsResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.service.PopulationService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -18,6 +19,12 @@ class PopulationController(
     fun getPopulationById(@PathVariable populationId: Long): ResponseEntity<GetPopulationResponse> {
         val population = populationService.getPopulation(populationId)
         return ResponseEntity.ok(GetPopulationResponse(population))
+    }
+
+    @GetMapping("/{populationId}/statistics")
+    fun getPopulationStatisticsById(@PathVariable populationId: Long): ResponseEntity<GetPopulationStatisticsResponse> {
+        val population = populationService.getPopulation(populationId)
+        return ResponseEntity.ok(GetPopulationStatisticsResponse(population))
     }
 
 }
