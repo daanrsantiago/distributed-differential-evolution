@@ -1,9 +1,9 @@
 import scipy.integrate as integrate
 from model import model
 
-def objective_function(x,Y) -> float:
-    time_final = 2
+def objective_function(x) -> float:
     time_initial = 0
+    time_final = 2
     control = [0.0, 9.0, 0.0, 0.0, 9.0, 0.0]
     solution = integrate.solve_ivp(
         fun=model,
@@ -12,10 +12,10 @@ def objective_function(x,Y) -> float:
         args=(x, control)
     )
 
-    resx1 = solution.y[-1, 0]^2
-    resx2 = solution.y[-1, 1]^2
-    resx3 = solution.y[-1, 2]^2
-    resx4 = solution.y[-1, 3]^2
+    resx1 = pow(solution.y[0, -1], 2)
+    resx2 = pow(solution.y[1, -1], 2)
+    resx3 = pow(solution.y[2, -1], 2)
+    resx4 = pow(solution.y[3, -1], 2)
     resx5 = solution.y[-1, 4]
 
     rp=1000000
