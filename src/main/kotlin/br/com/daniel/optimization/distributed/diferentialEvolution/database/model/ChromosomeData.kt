@@ -27,10 +27,11 @@ data class ChromosomeData (
     val targetChromosomeId: Long? = null,
     val targetPopulationId: Long? = null,
     var evaluationStatus: EvaluationStatus = NOT_EVALUATED,
+    var evaluationRetries: Int = 0,
     var evaluationId: String? = null,
     var evaluationBeginAt: ZonedDateTime? = null,
     var evaluatedAt: ZonedDateTime? = null,
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name="chromosomeElement",
         joinColumns= [JoinColumn(name = "chromosomeId")]

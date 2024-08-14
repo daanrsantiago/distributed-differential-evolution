@@ -36,7 +36,7 @@ class PopulationService(
 
     fun savePopulation(population: Population): Population {
         val savedPopulationData = populationRepository.save(population.toPopulationData())
-        savedPopulationData.populationMembers?.forEach {
+        savedPopulationData.members?.forEach {
             it.populationId = savedPopulationData.id
             chromosomeRepository.save(it)
         }

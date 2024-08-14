@@ -25,8 +25,9 @@ class OptimizationRunData(
     @JoinColumn(name = "chromosomeId", unique = true, nullable = true)
     var bestSoFarChromosome: ChromosomeData? = null,
     val objectiveFunctionEvaluationTimeoutSeconds: Long? = null,
+    val maxObjectiveFunctionReEvaluations: Int = 3,
     var status: OptimizationStatus = OptimizationStatus.RUNNING,
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name="chromosomeElementDetails",
         joinColumns= [JoinColumn(name = "optimizationRunId")]

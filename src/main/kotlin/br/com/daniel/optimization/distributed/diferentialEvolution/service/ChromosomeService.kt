@@ -1,9 +1,11 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.service
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.EXPERIMENTAL
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.TARGET
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.ERROR
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.EVALUATED
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ChromosomeRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromosome
@@ -40,6 +42,10 @@ class ChromosomeService(
                 )
             }!!
         return Chromosome(chromosomeData)
+    }
+
+    fun getExperimentalChromosomesByTargetChromosomeId(targetChromosomeId: Long): List<Chromosome> {
+        return chromosomeRepository.findAllByTargetChromosomeId(targetChromosomeId).map { Chromosome(it) }
     }
 
     fun getExperimentalChromosomesByTargetPopulationId(targetPopulationId: Long): List<Chromosome> {
@@ -84,22 +90,21 @@ class ChromosomeService(
 
         val populationId = chromosome.populationId
         val targetPopulationId = chromosome.targetPopulationId
-        val populationIdToLook = if (chromosome.type == ChromosomeType.TARGET) populationId!! else targetPopulationId!!
+        val populationIdToLook = if (chromosome.type == TARGET) populationId!! else targetPopulationId!!
 
         val optimizationRun = optimizationRunService.getOptimizationRun(chromosome.optimizationRunId!!)
         optimizationRunService.substituteBestSoFarChromosomeIfNecessary(optimizationRun, chromosome)
 
         val population = populationService.getPopulation(populationIdToLook)
 
-        val allPopulationChromosomesEvaluated = this.areAllChromosomesEvaluated(populationIdToLook)
-        if (allPopulationChromosomesEvaluated) {
-            val shouldStopOptimizationRun = optimizationRunService.checkForStopCriteria(optimizationRun)
-            if (!shouldStopOptimizationRun) {
-                optimizationRunService.advanceGeneration(optimizationRun, population)
-            }
-        }
+        optimizationRunService.advanceGenerationOrStopOptimizationIfNeeded(optimizationRun, population)
 
         return chromosome
+    }
+
+    fun saveChromosome(chromosome: Chromosome): Chromosome {
+        val savedChromosomeData = chromosomeRepository.save(chromosome.toChromosomeData())
+        return Chromosome(savedChromosomeData)
     }
 
     fun saveChromosomes(chromosomes: List<Chromosome>): List<Chromosome> {
@@ -107,8 +112,48 @@ class ChromosomeService(
         return savedChromosomesData.map { Chromosome(it) }
     }
 
-    fun areAllChromosomesEvaluated(populationId: Long): Boolean {
-        return chromosomeRepository.areAllChromosomesEvaluated(populationId)
+    fun registerChromosomeError(chromosome: Chromosome) {
+        logger.info("Chromosome with id ${chromosome.id} from optimizationRun with id ${chromosome.optimizationRunId} changed evaluationStatus to ERROR")
+        chromosome.evaluationStatus = ERROR
+        chromosomeRepository.save(chromosome.toChromosomeData())
+
+        if(chromosome.type == EXPERIMENTAL) {
+            val targetChromosome = getChromosome(chromosome.targetChromosomeId!!)
+
+            if(targetChromosome.evaluationStatus == ERROR) {
+                createAndSaveExperimentalChromosome(targetChromosome)
+            } else if (targetChromosome.evaluationStatus == EVALUATED){
+                advanceGenerationOrStopOptimizationIfNeeded(targetChromosome)
+            }
+        } else if(chromosome.type == TARGET) {
+            val experimentalChromosomes = getExperimentalChromosomesByTargetChromosomeId(chromosome.id!!)
+
+            if (experimentalChromosomes.all { it.evaluationStatus == ERROR }) {
+                createAndSaveExperimentalChromosome(chromosome)
+            } else if (experimentalChromosomes.any { it.evaluationStatus == EVALUATED }) {
+                advanceGenerationOrStopOptimizationIfNeeded(chromosome)
+            }
+        }
+
+    }
+
+    private fun advanceGenerationOrStopOptimizationIfNeeded(targetChromosome: Chromosome) {
+        val optimizationRun = optimizationRunService.getOptimizationRun(targetChromosome.optimizationRunId!!)
+        val population = populationService.getPopulation(targetChromosome.populationId!!)
+        optimizationRunService.advanceGenerationOrStopOptimizationIfNeeded(optimizationRun, population)
+    }
+
+    private fun createAndSaveExperimentalChromosome(targetChromosome: Chromosome) {
+        logger.info("Creating new experimental chromosome for target chromosome with id ${targetChromosome.id}")
+        val optimizationRun = optimizationRunService.getOptimizationRun(targetChromosome.optimizationRunId!!)
+        val population = populationService.getPopulation(targetChromosome.populationId!!)
+        val newExperimentalChromosome =
+            optimizationRunService.createExperimentalChromosome(targetChromosome, population.members, optimizationRun)
+        this.saveChromosome(newExperimentalChromosome)
+    }
+
+    fun areAllChromosomesInFinalStatus(populationId: Long): Boolean {
+        return chromosomeRepository.areAllChromosomesStatusEvaluatedOrError(populationId)
     }
 
 }

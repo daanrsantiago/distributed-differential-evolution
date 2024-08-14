@@ -9,6 +9,7 @@ data class ChromosomeResponse(
     val targetChromosomeId: Long?,
     val targetPopulationId: Long?,
     val evaluationStatus: EvaluationStatus,
+    val evaluationRetries: Long,
     val evaluationId: String?,
     val evaluationBeginAt: String?,
     val evaluatedAt: String?,

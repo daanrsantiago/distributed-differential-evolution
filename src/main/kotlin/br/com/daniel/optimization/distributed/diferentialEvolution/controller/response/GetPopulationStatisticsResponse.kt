@@ -17,8 +17,8 @@ data class GetPopulationStatisticsResponse(
         populationId = population.id,
         optimizationRunId = population.optimizationRunId,
         generation = population.generation,
-        bestFitness = population.populationMembers.bestChromosome().fitness,
-        meanFitness = population.populationMembers.meanFitness(),
-        worstFitness = population.populationMembers.worstChromosome().fitness
+        bestFitness = population.members.bestChromosome().fitness,
+        meanFitness = population.members.meanFitness(),
+        worstFitness = population.members.worstChromosome().fitness
     )
 }

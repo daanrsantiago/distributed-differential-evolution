@@ -8,7 +8,7 @@ class Population(
     val id: Long? = null,
     val optimizationRunId: Long? = null,
     val generation: Int,
-    val populationMembers: MutableList<Chromosome>,
+    val members: MutableList<Chromosome>,
     val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
 ) {
 
@@ -16,7 +16,7 @@ class Population(
         id = populationData.id,
         optimizationRunId = populationData.optimizationRunId,
         generation = populationData.generation!!,
-        populationMembers = populationData.populationMembers!!.map { Chromosome(it) }.toMutableList(),
+        members = populationData.members!!.map { Chromosome(it) }.toMutableList(),
         createdAt = populationData.createdAt
     )
 
@@ -25,8 +25,8 @@ class Population(
             id = id,
             optimizationRunId = optimizationRunId,
             generation = generation,
-            size = populationMembers.size,
-            populationMembers = populationMembers.map { it.toChromosomeData() }.toMutableList(),
+            size = members.size,
+            members = members.map { it.toChromosomeData() }.toMutableList(),
             createdAt = createdAt
         )
     }

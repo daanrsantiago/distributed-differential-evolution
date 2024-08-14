@@ -7,7 +7,7 @@ data class GetPopulationResponse (
     val id: Long?,
     val optimizationRunId: Long?,
     val generation: Int?,
-    var populationMembers: List<ChromosomeResponse>?,
+    var members: List<ChromosomeResponse>?,
     val createdAt: ZonedDateTime
 ) {
 
@@ -15,7 +15,7 @@ data class GetPopulationResponse (
         id = population.id,
         optimizationRunId = population.optimizationRunId,
         generation = population.generation,
-        populationMembers = population.populationMembers.map { ChromosomeResponse(it) },
+        members = population.members.map { ChromosomeResponse(it) },
         createdAt = population.createdAt,
     )
 

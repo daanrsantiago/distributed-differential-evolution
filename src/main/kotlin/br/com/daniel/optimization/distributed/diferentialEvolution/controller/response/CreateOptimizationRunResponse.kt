@@ -15,6 +15,7 @@ data class CreateOptimizationRunResponse(
     val valueToReach: Double? = null,
     val maxGenerations: Int? = null,
     val objectiveFunctionEvaluationTimeoutSeconds: Long?,
+    val maxObjectiveFunctionReEvaluations: Int?,
     val chromosomeElementDetails: List<ChromosomeElementDetails>? = null,
     val status: OptimizationStatus? = null,
 ) {
@@ -29,6 +30,7 @@ data class CreateOptimizationRunResponse(
         valueToReach = optimizationRun.valueToReach,
         maxGenerations = optimizationRun.maxGenerations,
         objectiveFunctionEvaluationTimeoutSeconds = optimizationRun.objectiveFunctionEvaluationTimeoutSeconds,
+        maxObjectiveFunctionReEvaluations = optimizationRun.maxObjectiveFunctionReEvaluations,
         chromosomeElementDetails = optimizationRun.chromosomeElementsDetails,
         status = optimizationRun.status
     )

@@ -3,6 +3,9 @@ package br.com.daniel.optimization.distributed.diferentialEvolution.service
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.EXPERIMENTAL
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.TARGET
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.ERROR
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.EVALUATED
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.OptimizationRunRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
@@ -45,29 +48,36 @@ class OptimizationRunService(
     fun createInitialPopulation(optimizationRun: OptimizationRun): Population {
         val populationMembers = mutableListOf<Chromosome>()
         for (iChromosome in 0 until optimizationRun.populationSize) {
-            val chromosomeElements = mutableListOf<Double>()
-            for(chromosomeElementDetails in optimizationRun.chromosomeElementsDetails) {
-                val chromosomeElementValue = chromosomeElementDetails.lowerBoundary +
-                        Math.random() * (chromosomeElementDetails.upperBoundary - chromosomeElementDetails.lowerBoundary)
-                chromosomeElements.add(chromosomeElementValue)
-            }
-            val chromosome = Chromosome(
-                optimizationRunId = optimizationRun.id,
-                objectiveFunctionId = optimizationRun.objectiveFunctionId,
-                type = ChromosomeType.TARGET,
-                elements = chromosomeElements
-            )
+            val chromosome = createRandomTargetChromosome(optimizationRun)
             populationMembers.add(chromosome)
         }
 
         return Population(
             optimizationRunId = optimizationRun.id,
             generation = 1,
-            populationMembers = populationMembers
+            members = populationMembers
         )
     }
 
-    fun createExperimentalChromosomes(optimizationRun: OptimizationRun, populationMembers: List<Chromosome>): List<Chromosome> {
+    fun createRandomTargetChromosome(optimizationRun: OptimizationRun): Chromosome {
+        val chromosomeElements = mutableListOf<Double>()
+        for (chromosomeElementDetails in optimizationRun.chromosomeElementsDetails) {
+            val chromosomeElementValue = chromosomeElementDetails.lowerBoundary +
+                    Math.random() * (chromosomeElementDetails.upperBoundary - chromosomeElementDetails.lowerBoundary)
+            chromosomeElements.add(chromosomeElementValue)
+        }
+        return Chromosome(
+            optimizationRunId = optimizationRun.id,
+            objectiveFunctionId = optimizationRun.objectiveFunctionId,
+            type = TARGET,
+            elements = chromosomeElements
+        )
+    }
+
+    fun createExperimentalChromosomes(
+        optimizationRun: OptimizationRun,
+        populationMembers: List<Chromosome>
+    ): List<Chromosome> {
         return populationMembers.map { targetChromosome ->
             createExperimentalChromosome(
                 targetChromosome,
@@ -77,18 +87,20 @@ class OptimizationRunService(
         }
     }
 
-    private fun createExperimentalChromosome(
+    fun createExperimentalChromosome(
         targetChromosome: Chromosome,
         populationMembers: List<Chromosome>,
         optimizationRun: OptimizationRun
     ): Chromosome {
-        val donorChromosome = createDonorChromosome(populationMembers, optimizationRun.perturbationFactor, optimizationRun)
-        val experimentalChromosomeElements = targetChromosome.elements.mapIndexed { targetChromosomeElementIndex, targetChromosomeElement ->
-            if (Math.random() < optimizationRun.crossOverProbability) {
-                return@mapIndexed donorChromosome.elements[targetChromosomeElementIndex]
-            }
-            return@mapIndexed targetChromosomeElement
-        }.toMutableList()
+        val donorChromosome =
+            createDonorChromosome(populationMembers, optimizationRun.perturbationFactor, optimizationRun)
+        val experimentalChromosomeElements =
+            targetChromosome.elements.mapIndexed { targetChromosomeElementIndex, targetChromosomeElement ->
+                if (Math.random() < optimizationRun.crossOverProbability) {
+                    return@mapIndexed donorChromosome.elements[targetChromosomeElementIndex]
+                }
+                return@mapIndexed targetChromosomeElement
+            }.toMutableList()
         return Chromosome(
             optimizationRunId = optimizationRun.id,
             objectiveFunctionId = optimizationRun.objectiveFunctionId,
@@ -104,7 +116,8 @@ class OptimizationRunService(
         perturbationFactor: Double,
         optimizationRun: OptimizationRun
     ): Chromosome {
-        val donorChromosomeElements = optimizationRun.strategy.createDonorChromosomeElements(populationMembers, perturbationFactor)
+        val donorChromosomeElements =
+            optimizationRun.strategy.createDonorChromosomeElements(populationMembers, perturbationFactor)
         limitChromosomeElementsToBoundaries(optimizationRun.chromosomeElementsDetails, donorChromosomeElements)
         return Chromosome(
             type = ChromosomeType.DONOR,
@@ -125,6 +138,19 @@ class OptimizationRunService(
         }
     }
 
+    fun advanceGenerationOrStopOptimizationIfNeeded(
+        optimizationRun: OptimizationRun,
+        population: Population
+    ) {
+        val allPopulationChromosomesInFinalStatus = chromosomeService.areAllChromosomesInFinalStatus(population.id!!)
+        if (allPopulationChromosomesInFinalStatus) {
+            val shouldStopOptimizationRun = checkForStopCriteria(optimizationRun)
+            if (!shouldStopOptimizationRun) {
+                advanceGeneration(optimizationRun, population)
+            }
+        }
+    }
+
     fun advanceGeneration(optimizationRun: OptimizationRun, population: Population) {
         optimizationRun.currentGeneration += 1
         saveOptimizationRun(optimizationRun)
@@ -132,10 +158,10 @@ class OptimizationRunService(
         var newPopulation = Population(
             optimizationRunId = optimizationRun.id,
             generation = optimizationRun.currentGeneration,
-            populationMembers = performSelection(optimizationRun, population).toMutableList()
+            members = performSelection(optimizationRun, population).toMutableList()
         )
         newPopulation = populationService.savePopulation(newPopulation)
-        val newExperimentalChromosomes = createExperimentalChromosomes(optimizationRun, newPopulation.populationMembers)
+        val newExperimentalChromosomes = createExperimentalChromosomes(optimizationRun, newPopulation.members)
         chromosomeService.saveChromosomes(newExperimentalChromosomes)
     }
 
@@ -145,32 +171,55 @@ class OptimizationRunService(
     ): List<Chromosome> {
         logger.info("Performing selection on population with id ${population.id} and optimizationRun with id ${optimizationRun.id}")
         val experimentalChromosomes = chromosomeService.getExperimentalChromosomesByTargetPopulationId(population.id!!)
-        val targetChromosomeMap = population.populationMembers.associateBy { it.id!! }
-        return experimentalChromosomes.map { experimentalChromosome ->
-            val targetChromosome = targetChromosomeMap[experimentalChromosome.targetChromosomeId]
-            if (targetChromosome!!.fitness!! < experimentalChromosome.fitness!!) {
+        val targetChromosomes = population.members
+        return targetChromosomes.map { targetChromosome ->
+            val targetChromosomeExperimentalChromosomes =
+                experimentalChromosomes.filter { it.targetChromosomeId == targetChromosome.id }
+            if (targetChromosome.evaluationStatus == ERROR) {
+                return@map targetChromosomeExperimentalChromosomes.first { it.evaluationStatus == EVALUATED }
+                    .copy(
+                        id = null,
+                        populationId = null,
+                        targetChromosomeId = null,
+                        targetPopulationId = null,
+                        type = TARGET
+                    )
+            } else if (targetChromosomeExperimentalChromosomes.all { it.evaluationStatus == ERROR }) {
                 return@map targetChromosome.copy(
                     id = null,
                     populationId = null,
-                    type = ChromosomeType.TARGET
+                    type = TARGET
                 )
             } else {
-                return@map experimentalChromosome.copy(
-                    id = null,
-                    populationId = null,
-                    targetChromosomeId = null,
-                    targetPopulationId = null,
-                    type = ChromosomeType.TARGET
-                )
+                val evaluatedExperimentalChromosome =
+                    targetChromosomeExperimentalChromosomes.first { it.evaluationStatus == EVALUATED }
+                if (targetChromosome.fitness!! < evaluatedExperimentalChromosome.fitness!!) {
+                    return@map targetChromosome.copy(
+                        id = null,
+                        populationId = null,
+                        type = TARGET
+                    )
+                } else {
+                    return@map evaluatedExperimentalChromosome.copy(
+                        id = null,
+                        populationId = null,
+                        targetChromosomeId = null,
+                        targetPopulationId = null,
+                        type = TARGET
+                    )
+                }
             }
         }
     }
 
+
     fun substituteBestSoFarChromosomeIfNecessary(optimizationRun: OptimizationRun, chromosome: Chromosome) {
-        if (optimizationRun.bestSoFarChromosome == null || ( chromosome.fitness!! < optimizationRun.bestSoFarChromosome!!.fitness!! )) {
-            logger.info("""Chromosome with id ${chromosome.id} is the new best so far for optimizationRun with id ${optimizationRun.id}
+        if (optimizationRun.bestSoFarChromosome == null || (chromosome.fitness!! < optimizationRun.bestSoFarChromosome!!.fitness!!)) {
+            logger.info(
+                """Chromosome with id ${chromosome.id} is the new best so far for optimizationRun with id ${optimizationRun.id}
                 elements: ${chromosome.elements}
-                fitness: ${chromosome.fitness}""")
+                fitness: ${chromosome.fitness}"""
+            )
             optimizationRun.bestSoFarChromosome = chromosome
             optimizationRunRepository.save(optimizationRun.toOptimizationRunData())
         }
@@ -181,7 +230,8 @@ class OptimizationRunService(
             logger.info("Changing status of optimizationRun with id ${optimizationRun.id} to FINISHED ")
             optimizationRun.status = OptimizationStatus.FINISHED
             optimizationRun.finishedAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
-            optimizationRun.timeToFinishInSeconds = optimizationRun.finishedAt!!.toEpochSecond() - optimizationRun.createdAt!!.toEpochSecond()
+            optimizationRun.timeToFinishInSeconds =
+                optimizationRun.finishedAt!!.toEpochSecond() - optimizationRun.createdAt!!.toEpochSecond()
             optimizationRunRepository.save(optimizationRun.toOptimizationRunData())
             return true
         }

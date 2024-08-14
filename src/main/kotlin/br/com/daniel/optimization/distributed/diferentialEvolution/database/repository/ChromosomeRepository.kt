@@ -18,15 +18,17 @@ interface ChromosomeRepository: PagingAndSortingRepository<ChromosomeData, Long>
     fun findAllByOptimizationRunIdAndEvaluationStatus(optimizationRunId: Long, evaluationStatus: EvaluationStatus): List<ChromosomeData>
 
     @Query(
-        """SELECT CASE WHEN COUNT(c) = SUM(CASE WHEN c.evaluationStatus = EVALUATED THEN 1 ELSE 0 END) THEN TRUE ELSE FALSE END
+        """SELECT CASE WHEN COUNT(c) = SUM(CASE WHEN c.evaluationStatus = EVALUATED OR c.evaluationStatus = ERROR THEN 1 ELSE 0 END) THEN TRUE ELSE FALSE END
            FROM ChromosomeData c 
            WHERE (c.populationId = :populationId OR c.targetPopulationId = :populationId)"""
     )
-    fun areAllChromosomesEvaluated(@Param("populationId") populationId: Long?): Boolean
+    fun areAllChromosomesStatusEvaluatedOrError(@Param("populationId") populationId: Long?): Boolean
 
     fun findAllByPopulationId(populationId: Long?): List<ChromosomeData>
 
     fun findAllByTargetPopulationIdAndType(targetPopulationId: Long?, type: ChromosomeType, pageable: Pageable): Page<ChromosomeData>
 
     fun findAllByTargetPopulationIdAndType(targetPopulationId: Long?, type: ChromosomeType): List<ChromosomeData>
+
+    fun findAllByTargetChromosomeId(targetChromosomeId: Long): List<ChromosomeData>
 }

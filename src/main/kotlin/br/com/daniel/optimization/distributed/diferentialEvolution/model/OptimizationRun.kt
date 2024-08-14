@@ -19,6 +19,7 @@ class OptimizationRun(
     var bestSoFarChromosome: Chromosome? = null,
     var status: OptimizationStatus,
     val objectiveFunctionEvaluationTimeoutSeconds: Long? = null,
+    val maxObjectiveFunctionReEvaluations: Int = 3,
     val chromosomeElementsDetails: MutableList<ChromosomeElementDetails>,
     var timeToFinishInSeconds: Long? = null,
     var finishedAt: ZonedDateTime? = null,
@@ -41,6 +42,7 @@ class OptimizationRun(
         bestSoFarChromosome = optimizationRunData.bestSoFarChromosome?.let { Chromosome(it) },
         status = optimizationRunData.status,
         objectiveFunctionEvaluationTimeoutSeconds = optimizationRunData.objectiveFunctionEvaluationTimeoutSeconds,
+        maxObjectiveFunctionReEvaluations = optimizationRunData.maxObjectiveFunctionReEvaluations,
         chromosomeElementsDetails = optimizationRunData.chromosomeElementsDetails!!
             .map { ChromosomeElementDetails(it) }
             .toMutableList(),
@@ -63,6 +65,7 @@ class OptimizationRun(
             bestSoFarChromosome = bestSoFarChromosome?.toChromosomeData(),
             status = status,
             objectiveFunctionEvaluationTimeoutSeconds = objectiveFunctionEvaluationTimeoutSeconds,
+            maxObjectiveFunctionReEvaluations = maxObjectiveFunctionReEvaluations,
             chromosomeElementsDetails = chromosomeElementsDetails.map { it.toChromosomeElementDetailData() }.toMutableList(),
             timeToFinishInSeconds = timeToFinishInSeconds,
             finishedAt = finishedAt,

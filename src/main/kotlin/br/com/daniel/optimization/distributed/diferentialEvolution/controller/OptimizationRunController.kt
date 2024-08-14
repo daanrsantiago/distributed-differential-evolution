@@ -55,7 +55,7 @@ class OptimizationRunController(
         initialPopulation = populationService.savePopulation(initialPopulation)
 
         val experimentalChromosomes = optimizationRunService
-            .createExperimentalChromosomes(optimizationRun, initialPopulation.populationMembers)
+            .createExperimentalChromosomes(optimizationRun, initialPopulation.members)
         chromosomeService.saveChromosomes(experimentalChromosomes)
 
         return ResponseEntity
