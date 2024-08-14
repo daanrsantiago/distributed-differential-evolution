@@ -46,7 +46,7 @@ class CheckEvaluationTimeoutScheduler(
                         logger.info("Chromosome with id ${runningOptimizationChromosome.id} from optimizationRun with id ${runningOptimization.id} changed evaluationStatus to TIMEOUT with ${runningOptimizationChromosome.evaluationRetries} retries")
                         chromosomeRepository.save(runningOptimizationChromosome)
                     } else {
-                        chromosomeService.registerChromosomeError(Chromosome(runningOptimizationChromosome))
+                        chromosomeService.publishEvaluationError(Chromosome(runningOptimizationChromosome), "timeout")
                     }
                 }
             }

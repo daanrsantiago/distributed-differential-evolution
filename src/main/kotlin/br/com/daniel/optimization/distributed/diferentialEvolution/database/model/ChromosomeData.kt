@@ -27,6 +27,7 @@ data class ChromosomeData (
     val targetChromosomeId: Long? = null,
     val targetPopulationId: Long? = null,
     var evaluationStatus: EvaluationStatus = NOT_EVALUATED,
+    val evaluationErrorReason: String?,
     var evaluationRetries: Int = 0,
     var evaluationId: String? = null,
     var evaluationBeginAt: ZonedDateTime? = null,

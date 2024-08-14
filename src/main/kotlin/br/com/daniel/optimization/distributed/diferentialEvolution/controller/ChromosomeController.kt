@@ -1,6 +1,7 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
-import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.ChangeEvaluationResultRequest
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.PublishEvaluationErrorRequest
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.PublishEvaluationResultRequest
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ChromosomeResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.*
@@ -35,18 +36,31 @@ class ChromosomeController(
         return ResponseEntity.ok(experimentalChromosomePage.map { ChromosomeResponse(it) })
     }
 
+    @PostMapping("/{chromosomeId}/evaluationError")
+    fun publishEvaluationError(
+        @PathVariable chromosomeId: Long,
+        @RequestBody publishEvaluationErrorRequest: PublishEvaluationErrorRequest
+    ) {
+        val chromosome = chromosomeService.getChromosome(chromosomeId)
+        if (publishEvaluationErrorRequest.evaluationId == chromosome.evaluationId) {
+            chromosomeService.publishEvaluationError(chromosome, publishEvaluationErrorRequest.reason)
+        } else {
+            throw RestHandledException(
+                ErrorResponse(BAD_REQUEST.value(), "evaluationId do not match")
+            )
+        }
+    }
+
     @PostMapping("/{chromosomeId}/evaluationResult")
-    fun changeEvaluationResult(
-        @PathVariable
-        chromosomeId: Long,
-        @RequestBody
-        changeEvaluationResultRequest: ChangeEvaluationResultRequest
+    fun publishEvaluationResult(
+        @PathVariable chromosomeId: Long,
+        @RequestBody publishEvaluationResultRequest: PublishEvaluationResultRequest
     ): ResponseEntity<ChromosomeResponse> {
         var chromosome = chromosomeService.getChromosome(chromosomeId)
 
         checkIfChromosomeIsEvaluatingOrTimeout(chromosome)
-        checkIfEvaluationIdIsTheSame(chromosome, changeEvaluationResultRequest.evaluationId)
-        chromosome = chromosomeService.saveEvaluatedChromosome(chromosome, changeEvaluationResultRequest.fitness)
+        checkIfEvaluationIdIsTheSame(chromosome, publishEvaluationResultRequest.evaluationId)
+        chromosome = chromosomeService.saveEvaluatedChromosome(chromosome, publishEvaluationResultRequest.fitness)
 
         return ResponseEntity.ok(ChromosomeResponse(chromosome))
     }
@@ -62,5 +76,7 @@ class ChromosomeController(
             throw RestHandledException(ErrorResponse(BAD_REQUEST.value(), "Provided evaluationId is not the same as current chromosome evaluationId"))
         }
     }
+
+
 
 }

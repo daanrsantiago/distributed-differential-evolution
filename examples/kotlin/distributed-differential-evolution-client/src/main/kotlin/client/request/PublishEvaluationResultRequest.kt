@@ -1,6 +1,6 @@
 package client.request
 
-data class ChangeEvaluationResultRequest(
+data class PublishEvaluationResultRequest(
     val fitness: Double,
     val evaluationId: String
 )

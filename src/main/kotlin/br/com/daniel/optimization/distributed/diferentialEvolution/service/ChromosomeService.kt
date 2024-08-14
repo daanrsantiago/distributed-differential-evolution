@@ -66,7 +66,7 @@ class ChromosomeService(
                 logger.info("No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet")
                 throw RestHandledException(
                     ErrorResponse(
-                        HttpStatus.PROCESSING.value(),
+                        404,
                         "No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet, comeback later."
                     )
                 )
@@ -112,9 +112,11 @@ class ChromosomeService(
         return savedChromosomesData.map { Chromosome(it) }
     }
 
-    fun registerChromosomeError(chromosome: Chromosome) {
-        logger.info("Chromosome with id ${chromosome.id} from optimizationRun with id ${chromosome.optimizationRunId} changed evaluationStatus to ERROR")
+    fun publishEvaluationError(chromosome: Chromosome, reason: String) {
+        logger.info("Chromosome with id ${chromosome.id} from optimizationRun with id ${chromosome.optimizationRunId} changed evaluationStatus to ERROR with " +
+                "reason: $reason")
         chromosome.evaluationStatus = ERROR
+        chromosome.evaluationErrorReason = reason
         chromosomeRepository.save(chromosome.toChromosomeData())
 
         if(chromosome.type == EXPERIMENTAL) {
