@@ -79,12 +79,34 @@ class ChromosomeService(
         return Chromosome(chromosomeData)
     }
 
-    fun saveEvaluatedChromosome(chromosome: Chromosome, fitness: Double): Chromosome {
-        logger.info("""Chromosome with id ${chromosome.id} from optimizationRun ${chromosome.optimizationRunId} changedEvaluationStatus to EVALUATED
+    private fun checkIfChromosomeIsFromCurrentGeneration(chromosomeData: ChromosomeData) {
+        val optimizationRun = optimizationRunService.getOptimizationRun(chromosomeData.optimizationRunId!!)
+        if (optimizationRun.currentGeneration != chromosomeData.generation) {
+            logger.error("Chromosome with id ${chromosomeData.id} and status ${chromosomeData.evaluationStatus} from population with id ${chromosomeData.populationId}, targetPopulation with id ${chromosomeData.targetPopulationId} and generation ${chromosomeData.generation} " +
+                    "is is trying to change status to EVALUATING but is not from current generation ${optimizationRun.currentGeneration}")
+//            throw RestHandledException(ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Not evaluated chromosome from previous generation"))
+        }
+    }
+
+    private fun checkIfChromosomeIsFromCurrentGeneration(chromosome: Chromosome) {
+        val optimizationRun = optimizationRunService.getOptimizationRun(chromosome.optimizationRunId!!)
+        if (optimizationRun.currentGeneration != chromosome.generation) {
+            logger.error("Chromosome with id ${chromosome.id} and status ${chromosome.evaluationStatus} from population with id ${chromosome.populationId}, targetPopulation with id ${chromosome.targetPopulationId} and generation ${chromosome.generation} " +
+                    "is trying to change status to EVALUATED but is not from current generation ${optimizationRun.currentGeneration}")
+//            throw RestHandledException(ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Not evaluated chromosome from previous generation"))
+        }
+    }
+
+    fun saveEvaluatedChromosome(chromosome: Chromosome, fitness: Double, evaluationId: String): Chromosome {
+        checkIfEvaluationIdIsTheSame(chromosome, evaluationId)
+        checkIfChromosomeIsFromCurrentGeneration(chromosome)
+        checkIfChromosomeAlreadyEvaluated(chromosome)
+        checkIfChromosomeIsEvaluatingOrTimeout(chromosome)
+        logger.info("""Chromosome with id ${chromosome.id}, populationId ${chromosome.populationId}, targetPopulationId ${chromosome.targetPopulationId}, generation ${chromosome.generation} and optimizationRunId ${chromosome.optimizationRunId} changedEvaluationStatus to EVALUATED
                 elements: ${chromosome.elements}
                 fitness $fitness""".trimIndent())
         chromosome.fitness = fitness
-        chromosome.evaluationStatus = EvaluationStatus.EVALUATED
+        chromosome.evaluationStatus = EVALUATED
         chromosome.evaluatedAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
         chromosomeRepository.save(chromosome.toChromosomeData())
 
@@ -102,6 +124,26 @@ class ChromosomeService(
         return chromosome
     }
 
+    private fun checkIfChromosomeAlreadyEvaluated(chromosome: Chromosome) {
+        if(chromosome.evaluationStatus == EVALUATED) {
+            logger.error("Chromosome with id ${chromosome.id} already evaluated")
+            throw RestHandledException(ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Chromosome with id ${chromosome.id} already evaluated"))
+        }
+    }
+
+    private fun checkIfChromosomeIsEvaluatingOrTimeout(chromosome: Chromosome) {
+        if (chromosome.evaluationStatus != EvaluationStatus.EVALUATING && chromosome.evaluationStatus != EvaluationStatus.TIMEOUT) {
+            logger.error("Chromosome with id ${chromosome.id} is not being evaluating")
+            throw RestHandledException(ErrorResponse(HttpStatus.NOT_FOUND.value(), "Chromosome with id ${chromosome.id} is not being evaluating"))
+        }
+    }
+
+    private fun checkIfEvaluationIdIsTheSame(chromosome: Chromosome, requestEvaluationId: String) {
+        if (chromosome.evaluationId != requestEvaluationId) {
+            throw RestHandledException(ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Provided evaluationId is not the same as current chromosome evaluationId"))
+        }
+    }
+
     fun saveChromosome(chromosome: Chromosome): Chromosome {
         val savedChromosomeData = chromosomeRepository.save(chromosome.toChromosomeData())
         return Chromosome(savedChromosomeData)
@@ -112,12 +154,13 @@ class ChromosomeService(
         return savedChromosomesData.map { Chromosome(it) }
     }
 
-    fun publishEvaluationError(chromosome: Chromosome, reason: String) {
+    fun publishEvaluationError(chromosome: Chromosome, reason: String, evaluationId: String) {
+        checkIfEvaluationIdIsTheSame(chromosome, evaluationId)
         logger.info("Chromosome with id ${chromosome.id} from optimizationRun with id ${chromosome.optimizationRunId} changed evaluationStatus to ERROR with " +
                 "reason: $reason")
         chromosome.evaluationStatus = ERROR
         chromosome.evaluationErrorReason = reason
-        chromosomeRepository.save(chromosome.toChromosomeData())
+        saveChromosome(chromosome)
 
         if(chromosome.type == EXPERIMENTAL) {
             val targetChromosome = getChromosome(chromosome.targetChromosomeId!!)
