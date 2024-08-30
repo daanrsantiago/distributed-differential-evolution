@@ -19,6 +19,7 @@ data class ChromosomeResponse(
     val evaluationId: String?,
     val evaluationBeginAt: ZonedDateTime?,
     val evaluatedAt: ZonedDateTime?,
+    val generation: Int?,
     val fitness: Double?,
     val elements: List<Double>?,
     val createdAt: ZonedDateTime
@@ -37,6 +38,7 @@ data class ChromosomeResponse(
         chromosome.evaluationId,
         chromosome.evaluationBeginAt,
         chromosome.evaluatedAt,
+        chromosome.generation,
         chromosome.fitness,
         chromosome.elements,
         chromosome.createdAt

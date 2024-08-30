@@ -48,7 +48,7 @@ class OptimizationRunService(
     fun createInitialPopulation(optimizationRun: OptimizationRun): Population {
         val populationMembers = mutableListOf<Chromosome>()
         for (iChromosome in 0 until optimizationRun.populationSize) {
-            val chromosome = createRandomTargetChromosome(optimizationRun)
+            val chromosome = createRandomTargetChromosome(optimizationRun, generation = 1)
             populationMembers.add(chromosome)
         }
 
@@ -59,7 +59,7 @@ class OptimizationRunService(
         )
     }
 
-    fun createRandomTargetChromosome(optimizationRun: OptimizationRun): Chromosome {
+    fun createRandomTargetChromosome(optimizationRun: OptimizationRun, generation: Int = 1): Chromosome {
         val chromosomeElements = mutableListOf<Double>()
         for (chromosomeElementDetails in optimizationRun.chromosomeElementsDetails) {
             val chromosomeElementValue = chromosomeElementDetails.lowerBoundary +
@@ -70,7 +70,8 @@ class OptimizationRunService(
             optimizationRunId = optimizationRun.id,
             objectiveFunctionId = optimizationRun.objectiveFunctionId,
             type = TARGET,
-            elements = chromosomeElements
+            elements = chromosomeElements,
+            generation = generation
         )
     }
 
@@ -89,11 +90,11 @@ class OptimizationRunService(
 
     fun createExperimentalChromosome(
         targetChromosome: Chromosome,
-        populationMembers: List<Chromosome>,
+        basedPopulation: Population,
         optimizationRun: OptimizationRun
     ): Chromosome {
         val donorChromosome =
-            createDonorChromosome(populationMembers, optimizationRun.perturbationFactor, optimizationRun)
+            createDonorChromosome(basedPopulation.members, optimizationRun.perturbationFactor, optimizationRun)
         val experimentalChromosomeElements =
             targetChromosome.elements.mapIndexed { targetChromosomeElementIndex, targetChromosomeElement ->
                 if (Math.random() < optimizationRun.crossOverProbability) {
@@ -108,6 +109,7 @@ class OptimizationRunService(
             targetChromosomeId = targetChromosome.id,
             targetPopulationId = targetChromosome.populationId,
             elements = experimentalChromosomeElements,
+            generation = basedPopulation.generation
         )
     }
 
@@ -170,9 +172,10 @@ class OptimizationRunService(
         population: Population,
     ): List<Chromosome> {
         logger.info("Performing selection on population with id ${population.id} and optimizationRun with id ${optimizationRun.id}")
+        val newGeneration = optimizationRun.currentGeneration
         val experimentalChromosomes = chromosomeService.getExperimentalChromosomesByTargetPopulationId(population.id!!)
         val targetChromosomes = population.members
-        return targetChromosomes.map { targetChromosome ->
+        val selectedChromosomes = targetChromosomes.map { targetChromosome ->
             val targetChromosomeExperimentalChromosomes =
                 experimentalChromosomes.filter { it.targetChromosomeId == targetChromosome.id }
             if (targetChromosome.evaluationStatus == ERROR) {
@@ -180,6 +183,7 @@ class OptimizationRunService(
                     .copy(
                         id = null,
                         populationId = null,
+                        generation = newGeneration,
                         targetChromosomeId = null,
                         targetPopulationId = null,
                         type = TARGET
@@ -188,6 +192,7 @@ class OptimizationRunService(
                 return@map targetChromosome.copy(
                     id = null,
                     populationId = null,
+                    generation = newGeneration,
                     type = TARGET
                 )
             } else {
@@ -197,12 +202,14 @@ class OptimizationRunService(
                     return@map targetChromosome.copy(
                         id = null,
                         populationId = null,
+                        generation = newGeneration,
                         type = TARGET
                     )
                 } else {
                     return@map evaluatedExperimentalChromosome.copy(
                         id = null,
                         populationId = null,
+                        generation = newGeneration,
                         targetChromosomeId = null,
                         targetPopulationId = null,
                         type = TARGET
@@ -210,6 +217,7 @@ class OptimizationRunService(
                 }
             }
         }
+        return selectedChromosomes
     }
 
 
