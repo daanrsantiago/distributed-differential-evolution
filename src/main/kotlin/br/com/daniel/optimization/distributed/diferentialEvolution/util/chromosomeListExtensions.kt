@@ -1,5 +1,6 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.util
 
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.ERROR
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromosome
 
 fun List<Chromosome>.bestChromosome(): Chromosome {
@@ -11,6 +12,7 @@ fun List<Chromosome>.worstChromosome(): Chromosome {
 }
 
 fun List<Chromosome>.meanFitness(): Double {
-    return this.sumOf { it.fitness ?: 0.0 } / this.size
+    val chromosomesWithoutError = this.filter { it.evaluationStatus != ERROR }
+    return chromosomesWithoutError.sumOf { it.fitness ?: 0.0 } / chromosomesWithoutError.size
 }
 
