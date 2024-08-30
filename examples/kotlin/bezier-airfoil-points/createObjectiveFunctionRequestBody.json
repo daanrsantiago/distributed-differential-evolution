@@ -1,0 +1,5 @@
+{
+	"name": "bezier curve fitting",
+	"description": "evaluate error on fitting a airfoil surface to a bezier curve",
+	"hash" : "{% hash 'sha512', 'hex', 'anything' %}"	
+}

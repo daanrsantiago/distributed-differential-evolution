@@ -1,0 +1,144 @@
+{
+	"objectiveFunctionId": 1,
+	"populationSize": 15,
+	"strategy": "DE_RAND_1_BIN",
+	"crossOverProbability": 0.8,
+	"perturbationFactor": 0.5,
+	"maxGenerations": 700,
+	"objectiveFunctionEvaluationTimeoutSeconds": 5,
+	"maxObjectiveFunctionReEvaluations": 0,
+	"chromosomeElementDetails": [
+		{
+			"name": "control point 0 angle",
+			"position": 0,
+			"lowerBoundary": 40.0,
+			"upperBoundary": 90.0
+		},
+		{
+			"name": "control point 0 distance point after",
+			"position": 1,
+			"lowerBoundary": 0.005,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 1 angle",
+			"position": 2,
+			"lowerBoundary": 0.0,
+			"upperBoundary": 45.0
+		},
+		{
+			"name": "control point 1 distance point before",
+			"position": 3,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 1 distance point after",
+			"position": 4,
+			"lowerBoundary": 0.005,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 2 angle",
+			"position": 5,
+			"lowerBoundary": -10.0,
+			"upperBoundary": 20.0
+		},
+		{
+			"name": "control point 2 distance point before",
+			"position": 6,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 2 distance point after",
+			"position": 7,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 3 angle",
+			"position": 8,
+			"lowerBoundary": -30.0,
+			"upperBoundary": 5.0
+		},
+		{
+			"name": "control point 3 distance point before",
+			"position": 9,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 3 distance point after",
+			"position": 10,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 4 angle",
+			"position": 11,
+			"lowerBoundary": -30.0,
+			"upperBoundary": 10.0
+		},
+		{
+			"name": "control point 4 distance point before",
+			"position": 12,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 4 distance point after",
+			"position": 13,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 5 angle",
+			"position": 14,
+			"lowerBoundary": -30.0,
+			"upperBoundary": 10.0
+		},
+		{
+			"name": "control point 5 distance point before",
+			"position": 15,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.13
+		},
+		{
+			"name": "control point 5 distance point after",
+			"position": 16,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 6 angle",
+			"position": 17,
+			"lowerBoundary": -30.0,
+			"upperBoundary": 10.0
+		},
+		{
+			"name": "control point 6 distance point before",
+			"position": 18,
+			"lowerBoundary": 0.005,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 6 distance point after",
+			"position": 19,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		},
+		{
+			"name": "control point 7 angle",
+			"position": 20,
+			"lowerBoundary": -30.0,
+			"upperBoundary": 10.0
+		},
+		{
+			"name": "control point 7 distance point before",
+			"position": 21,
+			"lowerBoundary": 0.01,
+			"upperBoundary": 0.1
+		}
+	]
+}

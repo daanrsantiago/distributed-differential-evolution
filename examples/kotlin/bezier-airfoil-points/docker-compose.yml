@@ -1,0 +1,11 @@
+version: '3.1'
+services:
+  app:
+    image: bezier-airfoil-example:2.4.0
+    environment:
+      OPTIMIZATION_RUN_ID_FILE_PATH: "/home/optimizationRunId.txt"
+      SERVER_HOST: "host.docker.internal"
+    volumes:
+      - .\src\main\resources:/home
+    deploy:
+      replicas: 2
