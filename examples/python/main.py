@@ -3,7 +3,7 @@ from optimization_api import post_evaluation_result
 from objective_function import objective_function
 
 if __name__ == "__main__":
-    optimization_run_id = 2
+    optimization_run_id = 1
 
     while True:
         chromosome_response = get_not_evaluated_chromosome(optimization_run_id)
