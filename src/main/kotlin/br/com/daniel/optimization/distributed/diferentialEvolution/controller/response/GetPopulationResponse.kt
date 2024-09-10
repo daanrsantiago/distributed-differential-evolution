@@ -8,6 +8,7 @@ data class GetPopulationResponse (
     val optimizationRunId: Long?,
     val generation: Int?,
     var members: List<ChromosomeResponse>?,
+    val chromosomesRemainingToBeEvaluated: Int,
     val createdAt: ZonedDateTime
 ) {
 
@@ -16,6 +17,7 @@ data class GetPopulationResponse (
         optimizationRunId = population.optimizationRunId,
         generation = population.generation,
         members = population.members.map { ChromosomeResponse(it) },
+        chromosomesRemainingToBeEvaluated = population.chromosomesRemainingToBeEvaluated,
         createdAt = population.createdAt,
     )
 

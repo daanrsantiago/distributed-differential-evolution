@@ -73,4 +73,11 @@ data class Chromosome(
         )
     }
 
+    val populationIdAssociated: Long
+    get() {
+        val populationId = populationId
+        val targetPopulationId = targetPopulationId
+        return if (type == ChromosomeType.TARGET) populationId!! else targetPopulationId!!
+    }
+
 }

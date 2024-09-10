@@ -1,0 +1,40 @@
+version: '3.5'
+services:
+  distributed-differential-evolution:
+    image: distributed-differential-evolution:1.0.0
+    expose:
+    - "8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+      DATABASE_USERNAME: myuser
+      DATABASE_PASSWORD: secret
+    depends_on:
+      - mysql
+    deploy:
+      replicas: 1
+
+  mysql:
+    image: mysql:latest
+    command: --transaction-isolation=READ-COMMITTED
+    environment:
+      MYSQL_DATABASE: mydatabase
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: verysecret
+      MYSQL_USER: myuser
+    ports:
+      - '3306:3306'
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - distributed-differential-evolution
+    ports:
+      - "4000:4000"
+
+networks:
+  default:
+    driver: bridge
+    name: distributed-differential-evolution

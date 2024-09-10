@@ -1,35 +1,28 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.CreateOptimizationRunRequest
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.PatchOptimizationRunRequest
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.*
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus.FINISHED
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ObjectiveFunctionRepository
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.PopulationRepository
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus.RUNNING
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
+import br.com.daniel.optimization.distributed.diferentialEvolution.exception.ServiceException
 import br.com.daniel.optimization.distributed.diferentialEvolution.service.ChromosomeService
 import br.com.daniel.optimization.distributed.diferentialEvolution.service.OptimizationRunService
 import br.com.daniel.optimization.distributed.diferentialEvolution.service.PopulationService
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
-import org.springframework.http.HttpStatus.*
+import org.springframework.http.HttpStatus.CREATED
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.util.*
 
 @RestController
 @RequestMapping(path = ["/optimizationRun"])
 class OptimizationRunController(
     val populationService: PopulationService,
     val optimizationRunService: OptimizationRunService,
-    val objectiveFunctionRepository: ObjectiveFunctionRepository,
-    val populationRepository: PopulationRepository,
     val chromosomeService: ChromosomeService
 ) {
-
-    val logger: Logger = LoggerFactory.getLogger(this::class.java)
-
     @GetMapping("/{optimizationRunId}")
     fun getOptimizationRunById(@PathVariable optimizationRunId: Long): ResponseEntity<GetOptimizationRunResponse> {
         val optimizationRun = optimizationRunService.getOptimizationRun(optimizationRunId)
@@ -42,61 +35,60 @@ class OptimizationRunController(
         return ResponseEntity.ok(optimizationRunPopulationsPage.map { GetOptimizationRunPopulationsResponse(it) })
     }
 
+    @GetMapping("/{optimizationRunId}/chromosome/notEvaluated")
+    fun getChromosomeForEvaluation(
+        @PathVariable("optimizationRunId") optimizationRunId: Long
+    ): ResponseEntity<GetChromosomeForEvaluationResponse> {
+        return try {
+            val notEvaluatedChromosomeData = chromosomeService.getChromosomeForEvaluation(optimizationRunId)
+            val getChromosomeForEvaluationResponse = GetChromosomeForEvaluationResponse(
+                optimizationRunId = optimizationRunId,
+                optimizationStatus = RUNNING,
+                chromosome = ChromosomeResponse(notEvaluatedChromosomeData)
+            )
+            ResponseEntity.ok(getChromosomeForEvaluationResponse)
+        } catch (optimizationRunFinishedException: ServiceException.OptimizationRunFinishedException) {
+            val getChromosomeForEvaluationResponse = GetChromosomeForEvaluationResponse(
+                optimizationRunId = optimizationRunId,
+                optimizationStatus = FINISHED
+            )
+            ResponseEntity.ok(getChromosomeForEvaluationResponse)
+        } catch (noChromosomeFoundForEvaluation: ServiceException.NoChromosomeFoundForEvaluation) {
+            throw RestHandledException(
+                ErrorResponse(
+                    404,
+                    "No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet, comeback later."
+                )
+            )
+        }
+    }
+
     @PostMapping
     fun createOptimizationRun(
         @RequestBody
         createOptimizationRunRequest: CreateOptimizationRunRequest
     ): ResponseEntity<CreateOptimizationRunResponse> {
-        checksIfObjectiveFunctionExists(createOptimizationRunRequest.objectiveFunctionId)
-        var optimizationRun = createOptimizationRunRequest.toOptimizationRun()
-        optimizationRun = optimizationRunService.saveOptimizationRun(optimizationRun)
-
-        var initialPopulation = optimizationRunService.createInitialPopulation(optimizationRun)
-        initialPopulation = populationService.savePopulation(initialPopulation)
-
-        val experimentalChromosomes = optimizationRunService
-            .createExperimentalChromosomes(optimizationRun, initialPopulation.members)
-        chromosomeService.saveChromosomes(experimentalChromosomes)
-
+        val optimizationRun = optimizationRunService.createOptimizationRun(createOptimizationRunRequest.toOptimizationRun())
         return ResponseEntity
             .status(CREATED)
             .body(CreateOptimizationRunResponse(optimizationRun))
     }
 
-    private fun checksIfObjectiveFunctionExists(objectiveFunctionId: Long) {
-        if (!objectiveFunctionRepository.existsById(objectiveFunctionId)) {
-            throw RestHandledException(
-                ErrorResponse(
-                    NOT_FOUND.value(),
-                    "Objective function with id $objectiveFunctionId not found"
-                )
-            )
-        }
+    @PatchMapping("/{optimizationRunId}")
+    fun patchOptimizationRun(
+        @PathVariable("optimizationRunId") optimizationRunId: Long,
+        @RequestBody patchOptimizationRunRequest: PatchOptimizationRunRequest
+    ): ResponseEntity<GetOptimizationRunResponse> {
+        val optimizationRun = optimizationRunService.getOptimizationRun(optimizationRunId)
+        val patchedOptimizationRun = patchOptimizationRunRequest.patchOptimizationRun(optimizationRun)
+        optimizationRunService.saveOptimizationRun(patchedOptimizationRun)
+        return ResponseEntity.ok(GetOptimizationRunResponse(patchedOptimizationRun))
     }
 
-    @GetMapping("/{optimizationRunId}/chromosome/notEvaluated")
-    fun getNotEvaluatedChromosome(
-        @PathVariable("optimizationRunId") optimizationRunId: Long
-    ): ResponseEntity<OptimizationRunChromosomeResponse> {
-        val optimizationRun = optimizationRunService.getOptimizationRun(optimizationRunId)
-        if (optimizationRun.status == FINISHED) {
-            return ResponseEntity.ok(
-                OptimizationRunChromosomeResponse(
-                    optimizationRunId = optimizationRun.id!!,
-                    optimizationStatus = optimizationRun.status
-                )
-            )
-        }
-
-        val notEvaluatedChromosomeData = chromosomeService.getChromosomeForEvaluation(optimizationRunId)
-        val chromosomeResponse = ChromosomeResponse(notEvaluatedChromosomeData)
-
-        val optimizationRunChromosomeResponse = OptimizationRunChromosomeResponse(
-            optimizationRunId = optimizationRun.id!!,
-            optimizationStatus = optimizationRun.status,
-            chromosome = chromosomeResponse
-        )
-        return ResponseEntity.ok(optimizationRunChromosomeResponse)
+    @DeleteMapping("/{optimizationRunId}")
+    fun deleteOptimizationRun(@PathVariable("optimizationRunId") optimizationRunId: Long): ResponseEntity<Any> {
+        optimizationRunService.deleteOptimizationRun(optimizationRunId)
+        return ResponseEntity.ok().build()
     }
 
 }

@@ -6,7 +6,7 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.model.Optimiz
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-class OptimizationRun(
+data class OptimizationRun(
     val id: Long? = null,
     val objectiveFunctionId: Long,
     val populationSize: Int,

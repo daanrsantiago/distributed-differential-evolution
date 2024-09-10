@@ -1,10 +1,44 @@
+server:
+  port: ${SERVER_RUNNING_PORT:8080}
+
 spring:
+  profiles.active: ${ACTIVE_PROFILES:h2}
   main:
     allow-circular-references: true
-  datasource:
-    url: jdbc:h2:file:./optimization-data
-    username: root
-    password: root
-    driver-class-name: org.h2.Driver
   jpa:
     hibernate.ddl-auto: update
+
+
+---
+spring:
+  config.activate.on-profile: h2
+  datasource:
+    url: jdbc:h2:file:./${DATABASE_FILE_NAME:optimization-data}
+    username: ${DATABASE_USERNAME:root}
+    password: ${DATABASE_PASSWORD:root}
+    driver-class-name: org.h2.Driver
+
+---
+spring:
+  config.activate.on-profile: h2-mem
+  datasource:
+    url: jdbc:h2:mem:optimization-data
+    username: ${DATABASE_USERNAME:root}
+    password: ${DATABASE_PASSWORD:root}
+    driver-class-name: org.h2.Driver
+
+---
+
+spring:
+  config.activate.on-profile: mysql
+  jpa:
+    hibernate.ddl-auto: create-drop
+    properties.hibernate:
+      dialect: org.hibernate.dialect.MySQLDialect
+      boot:
+        allow_jdbc_metadata_access: false
+  datasource:
+    url: jdbc:mysql://${DATABASE_HOST:mysql}:3306/${DATABASE_NAME:optimization-data}
+    username: ${DATABASE_USERNAME:root}
+    password: ${DATABASE_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver

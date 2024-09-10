@@ -20,8 +20,9 @@ class PopulationData(
     val generation: Int? = null,
     val size: Int? = null,
     @OneToMany(cascade = [ALL], fetch = EAGER)
-    @JoinColumn(name = "populationId")
+    @JoinColumn(name = "population_id")
     var members: MutableList<ChromosomeData>? = null,
+    val chromosomesRemainingToBeEvaluated: Int,
     val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
 ) {
 }

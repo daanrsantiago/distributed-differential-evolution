@@ -43,4 +43,23 @@ class PopulationService(
         return Population(savedPopulationData)
     }
 
+    fun addChromosomesRemainingToBeEvaluatedBy(populationId: Long, value: Int): Int {
+        return populationRepository.addChromosomesRemainingToBeEvaluatedBy(populationId, value)
+    }
+
+    fun removeChromosomesRemainingToBeEvaluatedBy(populationId: Long, value: Int): Int {
+        return populationRepository.removeChromosomesRemainingToBeEvaluatedBy(populationId, value)
+    }
+
+    fun getChromosomesRemainingToBeEvaluated(populationId: Long): Int {
+        return populationRepository.getChromosomesRemainingToBeEvaluated(populationId)
+    }
+
+    fun allChromosomesAreEvaluated(populationId: Long): Boolean {
+        return populationRepository.allChromosomesAreEvaluated(populationId)
+    }
+
+    fun deleteAllByOptimizationRunId(optimizationRunId: Long) {
+        chromosomeRepository.deleteAllByOptimizationRunId(optimizationRunId)
+    }
 }

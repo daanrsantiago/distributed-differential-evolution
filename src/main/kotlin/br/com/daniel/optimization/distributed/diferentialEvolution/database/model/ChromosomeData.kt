@@ -8,19 +8,19 @@ import java.time.ZonedDateTime
 
 @Entity
 @Table(name = "chromosomes", indexes = [
-    Index(columnList = "chromosomeId", name = "chromosomes_chromosomeId_idx"),
-    Index(columnList = "populationId", name = "chromosomes_populationId_idx"),
-    Index(columnList = "optimizationRunId", name = "chromosomes_optimizationRunId_idx"),
+    Index(columnList = "chromosome_id", name = "chromosomes_chromosomeId_idx"),
+    Index(columnList = "population_id", name = "chromosomes_populationId_idx"),
+    Index(columnList = "optimization_run_id", name = "chromosomes_optimizationRunId_idx"),
     Index(columnList = "targetPopulationId", name = "chromosomes_targetPopulationId_idx")
 ])
 data class ChromosomeData (
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
-    @Column(name = "chromosomeId")
+    @Column(name = "chromosome_id")
     var id: Long? = null,
-    @Column(name = "populationId")
+    @Column(name = "population_id")
     var populationId: Long? = null,
-    @Column(name = "optimizationRunId")
+    @Column(name = "optimization_run_id")
     val optimizationRunId: Long? = null,
     val objectiveFunctionId: Long? = null,
     val generation: Int? = null,

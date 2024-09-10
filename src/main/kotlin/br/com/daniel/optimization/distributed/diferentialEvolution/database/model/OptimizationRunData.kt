@@ -11,7 +11,8 @@ import java.time.ZonedDateTime
 @Table(name = "optimizationRuns")
 class OptimizationRunData(
     @Id
-    @GeneratedValue(strategy = SEQUENCE)
+    @SequenceGenerator(name = "optimization_run_generator", sequenceName = "optimization_run_id_seq", allocationSize = 1)
+    @GeneratedValue(strategy = SEQUENCE, generator = "optimization_run_generator")
     val id: Long? = null,
     val objectiveFunctionId: Long? = null,
     val populationSize: Int? = null,
@@ -22,7 +23,7 @@ class OptimizationRunData(
     val maxGenerations: Int? = null,
     var currentGeneration: Int,
     @ManyToOne(optional = true)
-    @JoinColumn(name = "chromosomeId", unique = true, nullable = true)
+    @JoinColumn(name = "best_chromosome_id", unique = true, nullable = true)
     var bestSoFarChromosome: ChromosomeData? = null,
     val objectiveFunctionEvaluationTimeoutSeconds: Long? = null,
     val maxObjectiveFunctionReEvaluations: Int = 3,

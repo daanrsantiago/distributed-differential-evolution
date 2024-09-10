@@ -1,14 +1,19 @@
+@file:Suppress("SpringJavaInjectionPointsAutowiringInspection")
+
 package br.com.daniel.optimization.distributed.diferentialEvolution.service
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.EXPERIMENTAL
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.ChromosomeType.TARGET
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.ERROR
-import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.EVALUATED
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.*
+import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.OptimizationStatus
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ChromosomeRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
+import br.com.daniel.optimization.distributed.diferentialEvolution.exception.ServiceException.NoChromosomeFoundForEvaluation
+import br.com.daniel.optimization.distributed.diferentialEvolution.exception.ServiceException.OptimizationRunFinishedException
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromosome
+import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,6 +21,8 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.*
@@ -23,8 +30,11 @@ import java.util.*
 @Service
 class ChromosomeService(
     val chromosomeRepository: ChromosomeRepository,
-    val populationService: PopulationService
+    val populationService: PopulationService,
+    platformTransactionManager: PlatformTransactionManager
 ) {
+    private val transactionTemplate = TransactionTemplate(platformTransactionManager)
+
     @set: Autowired
     lateinit var optimizationRunService: OptimizationRunService
 
@@ -60,40 +70,43 @@ class ChromosomeService(
     }
 
     fun getChromosomeForEvaluation(optimizationRunId: Long): Chromosome {
-        val chromosomeData = chromosomeRepository
-            .getNotEvaluatedChromosomeByOptimizationRunId(optimizationRunId)
-            .ifEmpty {
-                logger.info("No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet")
-                throw RestHandledException(
-                    ErrorResponse(
-                        404,
-                        "No chromosome found for evaluation on optimizationRun with id $optimizationRunId yet, comeback later."
-                    )
-                )
-            }.first()
-        chromosomeData.evaluationStatus = EvaluationStatus.EVALUATING
-        chromosomeData.evaluationId = UUID.randomUUID().toString()
-        chromosomeData.evaluationBeginAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
-        chromosomeRepository.save(chromosomeData)
-        logger.info("Chromosome with id ${chromosomeData.id} from optimizationRun with id ${chromosomeData.optimizationRunId} changed evaluationStatus to EVALUATING")
-        return Chromosome(chromosomeData)
+        val optimizationRun = optimizationRunService.getOptimizationRun(optimizationRunId)
+        checkIfOptimizationHasFinished(optimizationRun, optimizationRunId)
+        val chromosome = transactionTemplate.execute {
+            val chromosomeData = chromosomeRepository.getNotEvaluatedChromosomeByOptimizationRunId(optimizationRunId)
+                .ifEmpty { throw NoChromosomeFoundForEvaluation(optimizationRunId) }
+                .first()
+            val chromosome = Chromosome(chromosomeData)
+            checkIfChromosomeIsFromCurrentGeneration(chromosome)
+            chromosome.evaluationId = UUID.randomUUID().toString()
+            chromosome.evaluationStatus = EVALUATING
+            chromosome.evaluationBeginAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
+            updateBeginEvaluationData(
+                chromosomeData.id!!,
+                chromosome.evaluationId!!,
+                chromosome.evaluationBeginAt!!
+            )
+            return@execute chromosome
+        }!!
+        logger.info("Chromosome with id ${chromosome.id}, populationId ${chromosome.populationId}, targetPopulationId ${chromosome.targetPopulationId}, generation ${chromosome.generation} and optimizationRunId ${chromosome.optimizationRunId} changed evaluationStatus to EVALUATING")
+        return chromosome
     }
 
-    private fun checkIfChromosomeIsFromCurrentGeneration(chromosomeData: ChromosomeData) {
-        val optimizationRun = optimizationRunService.getOptimizationRun(chromosomeData.optimizationRunId!!)
-        if (optimizationRun.currentGeneration != chromosomeData.generation) {
-            logger.error("Chromosome with id ${chromosomeData.id} and status ${chromosomeData.evaluationStatus} from population with id ${chromosomeData.populationId}, targetPopulation with id ${chromosomeData.targetPopulationId} and generation ${chromosomeData.generation} " +
-                    "is is trying to change status to EVALUATING but is not from current generation ${optimizationRun.currentGeneration}")
-//            throw RestHandledException(ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Not evaluated chromosome from previous generation"))
+    private fun checkIfOptimizationHasFinished(
+        optimizationRun: OptimizationRun,
+        optimizationRunId: Long
+    ) {
+        if (optimizationRun.status == OptimizationStatus.FINISHED) {
+            throw OptimizationRunFinishedException(optimizationRunId)
         }
     }
 
     private fun checkIfChromosomeIsFromCurrentGeneration(chromosome: Chromosome) {
         val optimizationRun = optimizationRunService.getOptimizationRun(chromosome.optimizationRunId!!)
         if (optimizationRun.currentGeneration != chromosome.generation) {
-            logger.error("Chromosome with id ${chromosome.id} and status ${chromosome.evaluationStatus} from population with id ${chromosome.populationId}, targetPopulation with id ${chromosome.targetPopulationId} and generation ${chromosome.generation} " +
+            logger.error("Chromosome with id ${chromosome.id} and status ${chromosome.evaluationStatus} " +
+                    "from population with id ${chromosome.populationId}, targetPopulation with id ${chromosome.targetPopulationId} and generation ${chromosome.generation} " +
                     "is trying to change status to EVALUATED but is not from current generation ${optimizationRun.currentGeneration}")
-//            throw RestHandledException(ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Not evaluated chromosome from previous generation"))
         }
     }
 
@@ -108,18 +121,18 @@ class ChromosomeService(
         chromosome.fitness = fitness
         chromosome.evaluationStatus = EVALUATED
         chromosome.evaluatedAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
-        chromosomeRepository.save(chromosome.toChromosomeData())
 
-        val populationId = chromosome.populationId
-        val targetPopulationId = chromosome.targetPopulationId
-        val populationIdToLook = if (chromosome.type == TARGET) populationId!! else targetPopulationId!!
-
+        val allPopulationChromosomesInFinalStatus = transactionTemplate.execute {
+            updateEndEvaluationData(chromosome.id!!, fitness, chromosome.evaluatedAt!!)
+            populationService.removeChromosomesRemainingToBeEvaluatedBy(chromosome.populationIdAssociated, 1)
+            val chromosomesRemainingToBeEvaluated = populationService.getChromosomesRemainingToBeEvaluated(chromosome.populationIdAssociated)
+            logger.info("$chromosomesRemainingToBeEvaluated chromosomes remaining to be evaluated for population with id ${chromosome.populationIdAssociated}")
+            return@execute chromosomesRemainingToBeEvaluated == 0
+        }
+        val population = populationService.getPopulation(chromosome.populationIdAssociated)
         val optimizationRun = optimizationRunService.getOptimizationRun(chromosome.optimizationRunId!!)
+        optimizationRunService.advanceGenerationOrStopOptimizationIfNecessary(optimizationRun, population, allPopulationChromosomesInFinalStatus!!)
         optimizationRunService.substituteBestSoFarChromosomeIfNecessary(optimizationRun, chromosome)
-
-        val population = populationService.getPopulation(populationIdToLook)
-
-        optimizationRunService.advanceGenerationOrStopOptimizationIfNeeded(optimizationRun, population)
 
         return chromosome
     }
@@ -132,7 +145,7 @@ class ChromosomeService(
     }
 
     private fun checkIfChromosomeIsEvaluatingOrTimeout(chromosome: Chromosome) {
-        if (chromosome.evaluationStatus != EvaluationStatus.EVALUATING && chromosome.evaluationStatus != EvaluationStatus.TIMEOUT) {
+        if (chromosome.evaluationStatus != EVALUATING && chromosome.evaluationStatus != EvaluationStatus.TIMEOUT) {
             logger.error("Chromosome with id ${chromosome.id} is not being evaluating")
             throw RestHandledException(ErrorResponse(HttpStatus.NOT_FOUND.value(), "Chromosome with id ${chromosome.id} is not being evaluating"))
         }
@@ -160,45 +173,56 @@ class ChromosomeService(
                 "reason: $reason")
         chromosome.evaluationStatus = ERROR
         chromosome.evaluationErrorReason = reason
-        saveChromosome(chromosome)
+        updateEvaluationError(chromosome.id!!, reason)
 
-        if(chromosome.type == EXPERIMENTAL) {
-            val targetChromosome = getChromosome(chromosome.targetChromosomeId!!)
+        val targetChromosome = if (chromosome.type == TARGET) chromosome else getChromosome(chromosome.targetChromosomeId!!)
+        val experimentalChromosomes = if (chromosome.type == EXPERIMENTAL) listOf(chromosome) else getExperimentalChromosomesByTargetChromosomeId(chromosome.id!!)
 
-            if(targetChromosome.evaluationStatus == ERROR) {
-                createAndSaveExperimentalChromosome(targetChromosome)
-            } else if (targetChromosome.evaluationStatus == EVALUATED){
-                advanceGenerationOrStopOptimizationIfNeeded(targetChromosome)
+        if (targetChromosome.evaluationStatus == ERROR && experimentalChromosomes.all { it.evaluationStatus == ERROR }) {
+            createAndSaveExperimentalChromosome(targetChromosome)
+        } else {
+            val allPopulationChromosomesInFinalStatus = transactionTemplate.execute {
+                populationService.removeChromosomesRemainingToBeEvaluatedBy(chromosome.populationIdAssociated, 1)
+                val chromosomesRemainingToBeEvaluated = populationService.getChromosomesRemainingToBeEvaluated(chromosome.populationIdAssociated)
+                logger.info("$chromosomesRemainingToBeEvaluated chromosomes remaining to be evaluated for population with id ${chromosome.populationIdAssociated}")
+                return@execute chromosomesRemainingToBeEvaluated == 0
             }
-        } else if(chromosome.type == TARGET) {
-            val experimentalChromosomes = getExperimentalChromosomesByTargetChromosomeId(chromosome.id!!)
-
-            if (experimentalChromosomes.all { it.evaluationStatus == ERROR }) {
-                createAndSaveExperimentalChromosome(chromosome)
-            } else if (experimentalChromosomes.any { it.evaluationStatus == EVALUATED }) {
-                advanceGenerationOrStopOptimizationIfNeeded(chromosome)
-            }
+            advanceGenerationOrStopOptimizationIfNeeded(targetChromosome, allPopulationChromosomesInFinalStatus!!)
         }
-
     }
 
-    private fun advanceGenerationOrStopOptimizationIfNeeded(targetChromosome: Chromosome) {
+    private fun advanceGenerationOrStopOptimizationIfNeeded(targetChromosome: Chromosome, allPopulationChromosomesInFinalStatus: Boolean) {
         val optimizationRun = optimizationRunService.getOptimizationRun(targetChromosome.optimizationRunId!!)
         val population = populationService.getPopulation(targetChromosome.populationId!!)
-        optimizationRunService.advanceGenerationOrStopOptimizationIfNeeded(optimizationRun, population)
+        optimizationRunService.advanceGenerationOrStopOptimizationIfNecessary(optimizationRun, population, allPopulationChromosomesInFinalStatus)
     }
 
     private fun createAndSaveExperimentalChromosome(targetChromosome: Chromosome) {
-        logger.info("Creating new experimental chromosome for target chromosome with id ${targetChromosome.id}")
         val optimizationRun = optimizationRunService.getOptimizationRun(targetChromosome.optimizationRunId!!)
         val population = populationService.getPopulation(targetChromosome.populationId!!)
-        val newExperimentalChromosome =
-            optimizationRunService.createExperimentalChromosome(targetChromosome, population.members, optimizationRun)
-        this.saveChromosome(newExperimentalChromosome)
+        var newExperimentalChromosome = optimizationRunService.createExperimentalChromosome(targetChromosome, population, optimizationRun)
+        newExperimentalChromosome = this.saveChromosome(newExperimentalChromosome)
+        logger.info("Created new experimental chromosome with id ${newExperimentalChromosome.id}, " +
+                "targetChromosomeId ${newExperimentalChromosome.targetChromosomeId},  " +
+                "targetPopulationId ${newExperimentalChromosome.targetPopulationId} and " +
+                "optimizationRunId ${newExperimentalChromosome.optimizationRunId}")
+
     }
 
-    fun areAllChromosomesInFinalStatus(populationId: Long): Boolean {
-        return chromosomeRepository.areAllChromosomesStatusEvaluatedOrError(populationId)
+    fun updateBeginEvaluationData(chromosomeId: Long, evaluationId: String, evaluationBeginAt: ZonedDateTime) {
+        chromosomeRepository.updateBeginEvaluationData(chromosomeId, evaluationId, evaluationBeginAt)
+    }
+
+    fun updateEndEvaluationData(chromosomeId: Long, fitness: Double, evaluatedAt: ZonedDateTime) {
+        chromosomeRepository.updateEndEvaluationData(chromosomeId, fitness, evaluatedAt)
+    }
+
+    fun updateEvaluationError(chromosomeId: Long, evaluationErrorReason: String) {
+        chromosomeRepository.updateEvaluationErrorData(chromosomeId, evaluationErrorReason)
+    }
+
+    fun deleteAllByOptimizationRunId(optimizationRunId: Long) {
+        chromosomeRepository.deleteAllByOptimizationRunId(optimizationRunId)
     }
 
 }

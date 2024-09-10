@@ -9,6 +9,7 @@ data class GetPopulationStatisticsResponse(
     val populationId: Long?,
     val optimizationRunId: Long?,
     val generation: Int,
+    val bestChromosome: ChromosomeResponse? = null,
     val bestFitness: Double?,
     val meanFitness: Double,
     val worstFitness: Double?
@@ -17,6 +18,7 @@ data class GetPopulationStatisticsResponse(
         populationId = population.id,
         optimizationRunId = population.optimizationRunId,
         generation = population.generation,
+        bestChromosome = ChromosomeResponse(population.members.bestChromosome()),
         bestFitness = population.members.bestChromosome().fitness,
         meanFitness = population.members.meanFitness(),
         worstFitness = population.members.worstChromosome().fitness

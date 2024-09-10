@@ -4,5 +4,5 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.controller.re
 
 class RestHandledException(
     val errorResponse: ErrorResponse
-) : RuntimeException(errorResponse.message) {
+): RuntimeException(errorResponse.message) {
 }
