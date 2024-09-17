@@ -2,7 +2,7 @@ package client
 
 import client.request.PublishEvaluationErrorRequest
 import client.request.PublishEvaluationResultRequest
-import client.response.OptimizationRunResponse
+import client.response.GetChromosomeForEvaluationResponse
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import java.net.URI
@@ -15,7 +15,7 @@ val objectMapper = jacksonObjectMapper()
 val client = HttpClient.newBuilder().build()
 val baseUrl = System.getenv("SERVER_HOST") ?: "localhost"
 
-fun getNotEvaluatedChromosome(optimizationRunId: Int): Pair<OptimizationRunResponse?, Boolean> {
+fun getNotEvaluatedChromosome(optimizationRunId: Int): Pair<GetChromosomeForEvaluationResponse?, Boolean> {
     val request = HttpRequest.newBuilder()
         .uri(URI.create("http://$baseUrl:8080/optimizationRun/$optimizationRunId/chromosome/notEvaluated"))
         .GET()
@@ -25,8 +25,8 @@ fun getNotEvaluatedChromosome(optimizationRunId: Int): Pair<OptimizationRunRespo
     val response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
     return if (response.statusCode() == 200) {
-        val optimizationRunResponse: OptimizationRunResponse = objectMapper.readValue(response.body())
-        Pair(optimizationRunResponse, false)
+        val getChromosomeForEvaluationResponse: GetChromosomeForEvaluationResponse = objectMapper.readValue(response.body())
+        Pair(getChromosomeForEvaluationResponse, false)
     } else {
         Pair(null, true)
     }
