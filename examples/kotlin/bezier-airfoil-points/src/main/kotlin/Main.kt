@@ -1,50 +1,56 @@
 import client.getNotEvaluatedChromosome
 import client.publishEvaluationError
 import client.publishEvaluationResult
+import client.response.GetChromosomeForEvaluationResponse
 import client.response.OptimizationStatus
-import plane.elements.Point2D
 import utils.getOptimizationRunIdFromFile
-import utils.generatePoints
+import java.io.File
+import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
+@OptIn(ExperimentalTime::class)
 fun main(args: Array<String>) {
+    val getChromosomeMeasuredTimesFile = File("getChromosomeMeasuredTimes.txt")
+    val objectiveFunctionMeasuredTimesFile = File("objectiveFunctionMeasuredTimes.txt")
+    val publishEvaluationResultMeasuredTimesFile = File("publishEvaluationResultMeasuredTimes.txt")
 
-//    val controlPoints = listOf(
-//        Point2D(0.0, 0.0),
-//        Point2D(0.1,0.1),
-//        Point2D(0.5,0.15),
-//        Point2D(0.75,0.05),
-//        Point2D(1.0,0.0)
-//    )
-
-//    pythonExecution {
-//        val figure = figure()
-//        val axes = figure.add_subplot()
-//        sinSpacedTopPointsAirfoil.addPlotCommands(figure = figure, axes = axes, kwargs = mapOf(marker to Quoted("o")))
-//        sinSpacedTopPointsBezierCurve.addPlotCommands(figure = figure, axes = axes, kwargs = mapOf(marker to Quoted("o")))
-//        axes.legend(listOf("top surface true", "top surface bezier"))
-//        xlim(xmin = 0.0, xmax = 1.0)
-//        ylim(ymin = -0.5, ymax = 0.5)
-//        grid()
-//        show()
-//    }
-
-
-    print("Start app")
+    println("Start app")
     while (true) {
         val optimizationRunId = getOptimizationRunIdFromFile()
         try {
-            val (optimizationRunResponse, shouldWait) = getNotEvaluatedChromosome(optimizationRunId)
+            val optimizationRunResponse: GetChromosomeForEvaluationResponse?
+            val shouldWait: Boolean
+            val getChromosomeMeasuredTime = measureTime {
+                val response = getNotEvaluatedChromosome(optimizationRunId)
+                optimizationRunResponse = response.first
+                shouldWait = response.second
+            }
 
             if (shouldWait) {
                 Thread.sleep(500)
                 continue
             } else if (optimizationRunResponse!!.optimizationStatus != OptimizationStatus.FINISHED) {
                 if (optimizationRunResponse.chromosome == null) throw java.lang.RuntimeException("null chromosome")
+
+                getChromosomeMeasuredTimesFile.appendText("${getChromosomeMeasuredTime.inWholeMicroseconds}\n")
+                println("get chromosome duration: ${getChromosomeMeasuredTime.toString(DurationUnit.MILLISECONDS, 8)}")
                 val chromosome = optimizationRunResponse.chromosome
 
                 try {
-                    val fitness = objectiveFunction(chromosome.elements)
-                    publishEvaluationResult(fitness, optimizationRunResponse.chromosome.id, optimizationRunResponse.chromosome.evaluationId!!)
+                    val fitness: Double
+
+                    val objectiveFunctionMeasuredTime = measureTime {
+                        fitness = objectiveFunction(chromosome.elements)
+                    }
+                    println("objective function duration: ${objectiveFunctionMeasuredTime.toString(DurationUnit.MILLISECONDS, 8)}")
+                    objectiveFunctionMeasuredTimesFile.appendText("${objectiveFunctionMeasuredTime.inWholeMicroseconds}\n")
+
+                    val publishEvaluationResultMeasuredTime = measureTime {
+                        publishEvaluationResult(fitness, optimizationRunResponse.chromosome.id, optimizationRunResponse.chromosome.evaluationId!!)
+                    }
+                    println("publish evaluation duration: ${publishEvaluationResultMeasuredTime.toString(DurationUnit.MILLISECONDS, 8)}")
+                    publishEvaluationResultMeasuredTimesFile.appendText("${publishEvaluationResultMeasuredTime.inWholeMicroseconds}\n")
                 } catch (e: Exception) {
                     publishEvaluationError(chromosome.id, chromosome.evaluationId!!, "error while calculating objective function")
                 }
