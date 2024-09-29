@@ -1,6 +1,7 @@
 package br.com.daniel.optimization.distributed.diferentialEvolution.controller
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.CreateObjectiveFunctionRequest
+import br.com.daniel.optimization.distributed.diferentialEvolution.controller.request.PatchObjectiveFunctionRequest
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.CreateObjectiveFunctionResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.ErrorResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.GetObjectiveFunctionResponse
@@ -36,6 +37,28 @@ class ObjectiveFunctionController(
         return ResponseEntity
             .status(CREATED)
             .body(CreateObjectiveFunctionResponse(objectiveFunctionData))
+    }
+
+    @PatchMapping("/{objectiveFunctionId}")
+    fun patchObjectiveFunction(
+        @PathVariable objectiveFunctionId: Long,
+        @RequestBody patchObjectiveFunctionRequest: PatchObjectiveFunctionRequest
+    ): ResponseEntity<GetObjectiveFunctionResponse> {
+        val objectiveFunction = objectiveFunctionRepository.findById(objectiveFunctionId)
+            .orElseThrow {
+                RestHandledException(
+                    ErrorResponse(NOT_FOUND.value(), "ObjectiveFunction with id $objectiveFunctionId not found")
+                )
+            }
+        val patchedObjectiveFunction = objectiveFunctionRepository
+            .save(patchObjectiveFunctionRequest.patchObjectiveFunction(objectiveFunction))
+        return ResponseEntity.ok(GetObjectiveFunctionResponse(patchedObjectiveFunction))
+    }
+
+    @DeleteMapping("/{objectiveFunctionId}")
+    fun deleteObjectiveFunction(@PathVariable objectiveFunctionId: Long): ResponseEntity<Any> {
+        objectiveFunctionRepository.deleteById(objectiveFunctionId)
+        return ResponseEntity.ok().build()
     }
 
 }

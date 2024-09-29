@@ -12,9 +12,9 @@ class ObjectiveFunctionData(
     @Id
     @GeneratedValue(strategy = SEQUENCE)
     val id: Long? = null,
-    val name: String? = null,
-    val hash: String? = null,
-    val description: String? = null,
+    var name: String? = null,
+    var hash: String? = null,
+    var description: String? = null,
     val createdAt: ZonedDateTime = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
 ) {
 
