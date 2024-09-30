@@ -131,7 +131,7 @@ class OptimizationRunService(
         )
         val experimentalChromosomeElements = targetChromosome.elements
             .mapIndexed { targetChromosomeElementIndex, targetChromosomeElement ->
-                if (Math.random() < optimizationRun.crossOverProbability) {
+                if (Math.random() < optimizationRun.crossoverProbability) {
                     return@mapIndexed donorChromosome.elements[targetChromosomeElementIndex]
                 }
                 return@mapIndexed targetChromosomeElement
@@ -294,11 +294,12 @@ class OptimizationRunService(
 
     fun checkForStopCriteria(optimizationRun: OptimizationRun): Boolean {
         if (optimizationRun.maxGenerations == optimizationRun.currentGeneration) {
-            logger.info("Changing status of optimizationRun with id ${optimizationRun.id} to FINISHED ")
             optimizationRun.status = OptimizationStatus.FINISHED
             optimizationRun.finishedAt = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"))
             optimizationRun.timeToFinishInSeconds =
                 optimizationRun.finishedAt!!.toEpochSecond() - optimizationRun.createdAt!!.toEpochSecond()
+            logger.info("Changing status of optimizationRun with id ${optimizationRun.id} to FINISHED. " +
+                    "Time to finish ${optimizationRun.timeToFinishInSeconds} seconds")
             optimizationRunRepository.save(optimizationRun.toOptimizationRunData())
             return true
         }

@@ -17,7 +17,7 @@ class OptimizationRunData(
     val objectiveFunctionId: Long? = null,
     val populationSize: Int? = null,
     val strategy: OptimizationStrategy = DE_RAND_1_BIN,
-    val crossOverProbability: Double? = null,
+    val crossoverProbability: Double? = null,
     val perturbationFactor: Double? = null,
     val valueToReach: Double? = null,
     val maxGenerations: Int? = null,

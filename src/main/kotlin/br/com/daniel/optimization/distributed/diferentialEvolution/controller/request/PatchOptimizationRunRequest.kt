@@ -4,7 +4,7 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.model.Optimiz
 import java.util.*
 
 data class PatchOptimizationRunRequest(
-    val crossOverProbability: Optional<Double> = Optional.empty(),
+    val crossoverProbability: Optional<Double> = Optional.empty(),
     val perturbationFactor: Optional<Double> = Optional.empty(),
     val valueToReach: Optional<Double> = Optional.empty(),
     val maxGenerations: Optional<Int> = Optional.empty(),
@@ -14,7 +14,7 @@ data class PatchOptimizationRunRequest(
 
     fun patchOptimizationRun(optimizationRun: OptimizationRun): OptimizationRun {
         return optimizationRun.copy(
-            crossOverProbability = crossOverProbability.orElse(optimizationRun.crossOverProbability),
+            crossoverProbability = crossoverProbability.orElse(optimizationRun.crossoverProbability),
             perturbationFactor = perturbationFactor.orElse(optimizationRun.perturbationFactor),
             valueToReach = valueToReach.orElse(optimizationRun.valueToReach),
             maxGenerations = maxGenerations.orElse(optimizationRun.maxGenerations),

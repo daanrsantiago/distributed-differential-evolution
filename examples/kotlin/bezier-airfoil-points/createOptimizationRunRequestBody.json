@@ -2,7 +2,7 @@
 	"objectiveFunctionId": 1,
 	"populationSize": 15,
 	"strategy": "DE_RAND_1_BIN",
-	"crossOverProbability": 0.8,
+	"crossoverProbability": 0.8,
 	"perturbationFactor": 0.5,
 	"maxGenerations": 700,
 	"objectiveFunctionEvaluationTimeoutSeconds": 5,
