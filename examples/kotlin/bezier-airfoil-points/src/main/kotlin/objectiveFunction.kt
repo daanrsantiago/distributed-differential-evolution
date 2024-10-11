@@ -1,7 +1,7 @@
-import plane.BezierCurve
 import plane.CubicBezierSpline2D
 import plane.elements.Point2D
 import plane.elements.SmoothCubicBezierSplineControlPoints
+import plane.elements.xValues
 import plane.functions.CubicSpline
 import plane.utils.toPoint2DList
 import units.Angle
@@ -13,21 +13,15 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 fun objectiveFunction(designVariables: List<Double>, airfoilFileName: String = "clarky-ii.dat"): Double {
-    val sinSpaceXValues = sinSpace(min = 3* PI /2, max = 2* PI, nPoints = 100).map { it + 1 }
-
     val (topPoints, bottomPoints) = readAirfoilFile(airfoilFileName)
     val topPointsCubicSpline = CubicSpline(topPoints)
-    val sinSpacedTopPointsAirfoil = (sinSpaceXValues to topPointsCubicSpline(sinSpaceXValues)).toPoint2DList()
 
     val bezierCurve = buildSmoothCubicBezierSpline(designVariables, topPointsCubicSpline)
     val bezierCurvePoints = bezierCurve(linspace(0.0,1.0,150))
-    val cubicSplineBezierCurve = CubicSpline(bezierCurvePoints)
-    val sinSpacedTopPointsBezierCurve = (sinSpaceXValues to cubicSplineBezierCurve(sinSpaceXValues)).toPoint2DList()
-
     var error = 0.0
 
-    sinSpacedTopPointsAirfoil.forEachIndexed { index, airfoilTrueTopPoint ->
-        error += (airfoilTrueTopPoint.y - sinSpacedTopPointsBezierCurve[index].y).pow(2)
+    bezierCurvePoints.forEach {
+        error += (topPointsCubicSpline(it.x) - it.y).pow(2)
     }
 
     return sqrt(error)

@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URI
 
@@ -12,10 +14,9 @@ buildscript {
 }
 
 plugins {
-    kotlin("jvm") version "1.8.10"
+    kotlin("jvm") version "2.0.20"
     application
     id("com.gradleup.shadow") version "8.3.0"
-
 }
 
 group = "me.daanr"
@@ -35,18 +36,21 @@ repositories {
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.7.0")
-    implementation("io.github.daniel-tucano:matplotlib4k:0.3.1")
+    implementation("io.github.daniel-tucano:matplotlib4k:0.3.0")
     implementation("io.github.daniel-tucano:geomez-core:0.2.0")
     implementation("io.github.daniel-tucano:geomez-visualization:0.2.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.20")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JVM_21
+    }
 }
 
 tasks.test {
     useJUnitPlatform()
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "18"
 }
 
 application {
