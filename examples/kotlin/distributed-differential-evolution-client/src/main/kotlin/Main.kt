@@ -1,6 +1,5 @@
 import client.response.OptimizationStatus.FINISHED
 import util.*
-import java.util.Random
 
 
 fun main() {
@@ -11,19 +10,14 @@ fun main() {
             val (optimizationRunResponse, shouldWait) = getNotEvaluatedChromosome(optimizationRunId)
 
             if (shouldWait) {
-                Thread.sleep(500)
+                Thread.sleep(10)
                 continue
             } else if (optimizationRunResponse!!.optimizationStatus != FINISHED) {
-                val randval = Math.random()
-                if (randval <= 0.90) {
-                    val fitness = rastrigin(optimizationRunResponse.chromosome!!.elements)
-                    publishEvaluationResult(fitness, optimizationRunResponse.chromosome.id, optimizationRunResponse.chromosome.evaluationId!!)
-                } else {
-                    publishEvaluationError(optimizationRunResponse.chromosome!!.id, optimizationRunResponse.chromosome.evaluationId!!, "random error")
-                }
+                val fitness = rastrigin(optimizationRunResponse.chromosome!!.elements)
+                publishEvaluationResult(fitness, optimizationRunResponse.chromosome.id, optimizationRunResponse.chromosome.evaluationId!!)
             }
         } catch (e: Exception) {
-            println(e.message)
+            e.printStackTrace()
         }
     }
 }

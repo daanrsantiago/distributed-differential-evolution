@@ -26,8 +26,10 @@ fun getNotEvaluatedChromosome(optimizationRunId: Int): Pair<OptimizationRunRespo
 
     return if (response.statusCode() == 200) {
         val optimizationRunResponse: OptimizationRunResponse = objectMapper.readValue(response.body())
+        println("Chromosome with id ${optimizationRunResponse.chromosome!!.id} obtained with success")
         Pair(optimizationRunResponse, false)
     } else {
+        println("Could not obtain chromosome from optimizationId $optimizationRunId with success")
         Pair(null, true)
     }
 }
