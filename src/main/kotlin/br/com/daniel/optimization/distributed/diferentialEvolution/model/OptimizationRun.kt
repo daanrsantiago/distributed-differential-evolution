@@ -73,4 +73,8 @@ data class OptimizationRun(
         )
     }
 
+    fun createRandomChromosomeElementsValues(): MutableList<Double> = chromosomeElementsDetails
+        .map{it.createRandomChromosomeElementValue()}
+        .toMutableList()
+
 }

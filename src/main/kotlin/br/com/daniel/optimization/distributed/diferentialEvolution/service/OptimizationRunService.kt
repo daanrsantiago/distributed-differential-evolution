@@ -16,6 +16,8 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.model.Chromos
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.ChromosomeElementDetails
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationRun
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.Population
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -35,6 +37,11 @@ class OptimizationRunService(
     lateinit var chromosomeService: ChromosomeService
 
     val logger: Logger = LoggerFactory.getLogger(this::class.java)
+
+    fun getOptimizationRunsPage(pageable: Pageable): Page<OptimizationRun> {
+        return optimizationRunRepository.findAll(pageable)
+            .map { OptimizationRun(it) }
+    }
 
     fun getOptimizationRun(optimizationRunId: Long): OptimizationRun {
         val optimizationRunData = optimizationRunRepository
@@ -91,12 +98,7 @@ class OptimizationRunService(
     }
 
     fun createRandomTargetChromosome(optimizationRun: OptimizationRun, generation: Int = 1): Chromosome {
-        val chromosomeElements = mutableListOf<Double>()
-        for (chromosomeElementDetails in optimizationRun.chromosomeElementsDetails) {
-            val chromosomeElementValue = chromosomeElementDetails.lowerBoundary +
-                    Math.random() * (chromosomeElementDetails.upperBoundary - chromosomeElementDetails.lowerBoundary)
-            chromosomeElements.add(chromosomeElementValue)
-        }
+        val chromosomeElements = optimizationRun.createRandomChromosomeElementsValues()
         return Chromosome(
             optimizationRunId = optimizationRun.id,
             objectiveFunctionId = optimizationRun.objectiveFunctionId,

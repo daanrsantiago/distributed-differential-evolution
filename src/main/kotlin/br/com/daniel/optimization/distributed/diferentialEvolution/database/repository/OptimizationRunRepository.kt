@@ -6,9 +6,10 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.database.mode
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
+import org.springframework.data.repository.PagingAndSortingRepository
 import org.springframework.transaction.annotation.Transactional
 
-interface OptimizationRunRepository: CrudRepository<OptimizationRunData, Long> {
+interface OptimizationRunRepository: PagingAndSortingRepository<OptimizationRunData, Long>, CrudRepository<OptimizationRunData, Long> {
 
     fun findAllByStatus(status: OptimizationStatus): List<OptimizationRunData>
 

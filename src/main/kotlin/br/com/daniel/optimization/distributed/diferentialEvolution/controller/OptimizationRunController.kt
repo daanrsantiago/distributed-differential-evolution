@@ -23,6 +23,14 @@ class OptimizationRunController(
     val optimizationRunService: OptimizationRunService,
     val chromosomeService: ChromosomeService
 ) {
+
+    @GetMapping("/")
+    fun getOptimizationRunsPage(pageable: Pageable): ResponseEntity<Page<GetOptimizationRunsPageContentResponse>> {
+        val optimizationRunsPage = optimizationRunService.getOptimizationRunsPage(pageable)
+        val optimizationRunsContentsPage = optimizationRunsPage.map { GetOptimizationRunsPageContentResponse(it) }
+        return ResponseEntity.ok(optimizationRunsContentsPage)
+    }
+
     @GetMapping("/{optimizationRunId}")
     fun getOptimizationRunById(@PathVariable optimizationRunId: Long): ResponseEntity<GetOptimizationRunResponse> {
         val optimizationRun = optimizationRunService.getOptimizationRun(optimizationRunId)

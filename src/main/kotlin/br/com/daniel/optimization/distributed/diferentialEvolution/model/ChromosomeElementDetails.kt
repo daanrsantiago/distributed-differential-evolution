@@ -28,4 +28,8 @@ data class ChromosomeElementDetails(
         )
     }
 
+    fun createRandomChromosomeElementValue(): Double {
+        return lowerBoundary + Math.random() * (upperBoundary - lowerBoundary)
+    }
+
 }
