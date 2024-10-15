@@ -4,8 +4,8 @@ services:
     image: distributed-differential-evolution-client-example:1.0.0
     environment:
       OPTIMIZATION_RUN_ID_FILE_PATH: "/home/optimizationRunId.txt"
-      SERVER_HOST: "host.docker.internal"
+      SERVER_HOST: "172.17.0.1"
     volumes:
-      - .\src\main\resources:/home
+      - ./src/main/resources:/home
     deploy:
-      replicas: 1
+      replicas: 2

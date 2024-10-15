@@ -22,7 +22,7 @@ fun getNotEvaluatedChromosome(optimizationRunId: Int): Pair<GetChromosomeForEval
         .timeout(Duration.ofMillis(100))
         .build()
 
-    val response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    val response = client.send(request, HttpResponse.BodyHandlers.ofString())
 
     return if (response.statusCode() == 200) {
         val getChromosomeForEvaluationResponse: GetChromosomeForEvaluationResponse = objectMapper.readValue(response.body())

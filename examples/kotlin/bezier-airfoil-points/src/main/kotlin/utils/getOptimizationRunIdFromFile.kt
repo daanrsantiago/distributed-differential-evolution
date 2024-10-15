@@ -5,7 +5,7 @@ import java.io.File
 val optimizationRunIdFilePath = System.getenv("OPTIMIZATION_RUN_ID_FILE_PATH") ?: "src/main/resources/optimizationRunId.txt"
 
 var currentIterationCount = 0
-var optimizationRunId = 1
+var optimizationRunId = 0
 val iterationsBeforeReadFileAgain = 10
 
 fun getOptimizationRunIdFromFile(): Int {

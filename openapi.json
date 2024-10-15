@@ -339,7 +339,26 @@
                   "content": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/components/schemas/PopulationStatisticsResponseBody"
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "format": "int64"
+                            },
+                            "optimizationRunId": {
+                                "type": "integer",
+                                "format": "int64"
+                            },
+                            "generation": {
+                                "type": "integer"
+                            },
+                            "statistics": {
+                                "$ref": "#/components/schemas/PopulationStatisticsResponseBody"
+                            },
+                            "createdAt": {
+                                "type": "string"
+                            }
+                        }
                     }
                   },
                   "number": {

@@ -1,11 +1,14 @@
-version: '3.1'
+version: '3.8'
 services:
   app:
-    image: bezier-airfoil-example:2.4.0
+    image: bezier-airfoil-example:2.9.0
     environment:
+      CONTAINER_ID: "{{.Task.Slot}}"
+      RECORD_TIMINGS: "true"
       OPTIMIZATION_RUN_ID_FILE_PATH: "/home/optimizationRunId.txt"
       SERVER_HOST: "host.docker.internal"
     volumes:
-      - .\src\main\resources:/home
+      - ./src/main/resources:/home
+      - ./resultados:/resultados
     deploy:
-      replicas: 2
+      replicas: 0

@@ -1,6 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.net.URI
 
 buildscript {
