@@ -12,7 +12,7 @@ buildscript {
 }
 
 plugins {
-    kotlin("jvm") version "2.0.20"
+    kotlin("jvm") version "2.0.21"
     application
     id("com.gradleup.shadow") version "8.3.0"
 }
@@ -38,13 +38,14 @@ dependencies {
     implementation("io.github.daniel-tucano:geomez-core:0.2.0")
     implementation("io.github.daniel-tucano:geomez-visualization:0.2.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.20")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.20")
 }
 
 kotlin {
     compilerOptions {
         jvmTarget = JVM_21
     }
+    jvmToolchain(21)
 }
 
 tasks.test {

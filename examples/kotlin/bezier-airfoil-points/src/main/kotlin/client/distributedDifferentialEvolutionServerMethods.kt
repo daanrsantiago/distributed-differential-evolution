@@ -13,13 +13,15 @@ import java.time.Duration
 
 val objectMapper = jacksonObjectMapper()
 val client = HttpClient.newBuilder().build()
-val baseUrl = System.getenv("SERVER_HOST") ?: "localhost"
+val baseHost = System.getenv("SERVER_HOST") ?: "localhost"
+val basePort = System.getenv("SERVER_PORT") ?: "8080"
+val getChromosomeRequestTimeoutMilliseconds = System.getenv("GET_CHROMOSOME_REQUEST_TIMEOUT_MILLISECONDS")?.toLongOrNull() ?: 200L
 
 fun getNotEvaluatedChromosome(optimizationRunId: Int): Pair<GetChromosomeForEvaluationResponse?, Boolean> {
     val request = HttpRequest.newBuilder()
-        .uri(URI.create("http://$baseUrl:8080/optimizationRun/$optimizationRunId/chromosome/notEvaluated"))
+        .uri(URI.create("http://$baseHost:$basePort/optimizationRun/$optimizationRunId/chromosome/notEvaluated"))
         .GET()
-        .timeout(Duration.ofMillis(100))
+        .timeout(Duration.ofMillis(getChromosomeRequestTimeoutMilliseconds))
         .build()
 
     val response = client.send(request, HttpResponse.BodyHandlers.ofString())
@@ -40,7 +42,7 @@ fun publishEvaluationResult(result: Double, chromosomeId: Long, evaluationId: St
         )
     )
     val request = HttpRequest.newBuilder()
-        .uri(URI.create("http://$baseUrl:8080/chromosome/$chromosomeId/evaluationResult"))
+        .uri(URI.create("http://$baseHost:$basePort/chromosome/$chromosomeId/evaluationResult"))
         .POST( HttpRequest.BodyPublishers.ofString(requestBody) )
         .setHeader("Content-Type", "application/json")
         .build()
@@ -58,7 +60,7 @@ fun publishEvaluationError(chromosomeId: Long, evaluationId: String, reason: Str
         )
     )
     val request = HttpRequest.newBuilder()
-        .uri(URI.create("http://$baseUrl:8080/chromosome/$chromosomeId/evaluationError"))
+        .uri(URI.create("http://$baseHost:$basePort/chromosome/$chromosomeId/evaluationError"))
         .POST( HttpRequest.BodyPublishers.ofString(requestBody) )
         .setHeader("Content-Type", "application/json")
         .build()

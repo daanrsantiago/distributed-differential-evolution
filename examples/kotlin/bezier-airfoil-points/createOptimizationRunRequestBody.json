@@ -4,8 +4,8 @@
 	"strategy": "DE_RAND_1_BIN",
 	"crossoverProbability": 0.8,
 	"perturbationFactor": 0.5,
-	"maxGenerations": 700,
-	"objectiveFunctionEvaluationTimeoutSeconds": 5,
+	"maxGenerations": 500,
+	"objectiveFunctionEvaluationTimeoutSeconds": 1,
 	"maxObjectiveFunctionReEvaluations": 0,
 	"chromosomeElementDetails": [
 		{

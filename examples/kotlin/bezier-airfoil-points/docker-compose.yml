@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   app:
-    image: bezier-airfoil-example:2.9.0
+    image: bezier-airfoil-example:2.10.0
     environment:
       CONTAINER_ID: "{{.Task.Slot}}"
       RECORD_TIMINGS: "true"
@@ -9,6 +9,6 @@ services:
       SERVER_HOST: "host.docker.internal"
     volumes:
       - ./src/main/resources:/home
-      - ./resultados:/resultados
+      - ./results:/results
     deploy:
       replicas: 0

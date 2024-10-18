@@ -1,9 +1,7 @@
 import plane.CubicBezierSpline2D
 import plane.elements.Point2D
 import plane.elements.SmoothCubicBezierSplineControlPoints
-import plane.elements.xValues
 import plane.functions.CubicSpline
-import plane.utils.toPoint2DList
 import units.Angle
 import utils.linspace
 import utils.readAirfoilFile
