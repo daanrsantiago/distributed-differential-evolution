@@ -2,15 +2,17 @@ package br.com.daniel.optimization.distributed.diferentialEvolution.database.mod
 
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.model.EvaluationStatus.NOT_EVALUATED
 import jakarta.persistence.*
+import jakarta.persistence.EnumType.STRING
 import org.hibernate.Hibernate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
 @Entity
 @Table(name = "chromosomes", indexes = [
-    Index(columnList = "chromosome_id", name = "chromosomes_chromosomeId_idx"),
+    Index(columnList = "chromosome_id", name = "chromosomes_chromosomeId_idx", unique = true),
     Index(columnList = "population_id", name = "chromosomes_populationId_idx"),
     Index(columnList = "optimization_run_id", name = "chromosomes_optimizationRunId_idx"),
+    Index(columnList = "optimization_run_id, evaluation_status", name = "chromosomes_optimizationRunId_evaluation_status_idx"),
     Index(columnList = "targetPopulationId", name = "chromosomes_targetPopulationId_idx")
 ])
 data class ChromosomeData (
@@ -25,9 +27,12 @@ data class ChromosomeData (
     val objectiveFunctionId: Long? = null,
     val generation: Int? = null,
     var fitness: Double? = null,
+    @Enumerated(STRING)
     val type: ChromosomeType,
     val targetChromosomeId: Long? = null,
     val targetPopulationId: Long? = null,
+    @Column(name = "evaluation_status")
+    @Enumerated(STRING)
     var evaluationStatus: EvaluationStatus = NOT_EVALUATED,
     val evaluationErrorReason: String? = null,
     var evaluationRetries: Int = 0,

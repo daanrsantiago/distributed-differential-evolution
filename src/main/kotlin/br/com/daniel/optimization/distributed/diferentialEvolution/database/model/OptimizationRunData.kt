@@ -3,6 +3,7 @@ package br.com.daniel.optimization.distributed.diferentialEvolution.database.mod
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationStrategy
 import br.com.daniel.optimization.distributed.diferentialEvolution.model.OptimizationStrategy.DE_RAND_1_BIN
 import jakarta.persistence.*
+import jakarta.persistence.EnumType.STRING
 import jakarta.persistence.GenerationType.SEQUENCE
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -16,6 +17,7 @@ class OptimizationRunData(
     val id: Long? = null,
     val objectiveFunctionId: Long? = null,
     val populationSize: Int? = null,
+    @Enumerated(STRING)
     val strategy: OptimizationStrategy = DE_RAND_1_BIN,
     val crossoverProbability: Double? = null,
     val perturbationFactor: Double? = null,
@@ -27,6 +29,7 @@ class OptimizationRunData(
     var bestSoFarChromosome: ChromosomeData? = null,
     val objectiveFunctionEvaluationTimeoutSeconds: Long? = null,
     val maxObjectiveFunctionReEvaluations: Int = 3,
+    @Enumerated(STRING)
     var status: OptimizationStatus = OptimizationStatus.RUNNING,
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
