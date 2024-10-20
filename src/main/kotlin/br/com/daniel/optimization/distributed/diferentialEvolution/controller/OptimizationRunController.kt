@@ -39,7 +39,7 @@ class OptimizationRunController(
 
     @GetMapping("/{optimizationRunId}/populations")
     fun getOptimizationRunPopulationsById(@PathVariable optimizationRunId: Long, pageable: Pageable): ResponseEntity<Page<GetOptimizationRunPopulationsResponse>> {
-        val optimizationRunPopulationsPage = populationService.getPopulationPageByOptimizationRunId(optimizationRunId, pageable)
+        val optimizationRunPopulationsPage = populationService.getPopulationsPageByOptimizationRunId(optimizationRunId, pageable)
         return ResponseEntity.ok(optimizationRunPopulationsPage.map { GetOptimizationRunPopulationsResponse(it) })
     }
 

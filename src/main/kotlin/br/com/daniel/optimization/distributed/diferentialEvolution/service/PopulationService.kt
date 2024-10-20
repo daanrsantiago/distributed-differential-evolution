@@ -30,7 +30,11 @@ class PopulationService(
         return Population(populationData)
     }
 
-    fun getPopulationPageByOptimizationRunId(optimizationRunId: Long, pageable: Pageable): Page<Population> {
+    fun getPopulationsPage(pageable: Pageable): Page<Population> {
+        return populationRepository.findAll(pageable).map { Population(it) }
+    }
+
+    fun getPopulationsPageByOptimizationRunId(optimizationRunId: Long, pageable: Pageable): Page<Population> {
         return populationRepository.findAllByOptimizationRunId(optimizationRunId, pageable).map { Population(it) }
     }
 
