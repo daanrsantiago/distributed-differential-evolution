@@ -1,1849 +1,2980 @@
 {
-    "openapi":"3.1.0",
-    "info": {
-      "title":"Distributed Differential Evolution",
-      "description": "Api de interação com a aplicação mestre de evolução diferencial distribuída",
-      "version":"1.0",
-      "contact": {
-        "name": "Daniel Ribeiro Santiago",
-        "email": "daanrsantiago@gmail.com"
-      }
-    },  
-    "servers": [
-      {
-        "url":"http://localhost:8080",
-        "description": "Servidor local"
-      }
-    ],
-    "components": {
-        "schemas": {
-            "ObjectiveFunctionRequestBody": {
-                "type": "object",
-                "required": [
-                    "name"
-                ],
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Nome da função objetivo"
-                    },
-                    "description": {
-                        "type": "string",
-                        "description": "Descrição da função objetivo"
-                    },
-                    "hash": {
-                        "type": "string",
-                        "description": "Hash da função objetivo"
-                    }
-                }
-            },
-            "ObjectiveFunctionResponseBody": {
-                "allOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer",
-                                "format": "int64",
-                                "description": "Identificador da função objetivo"
-                            }
-                        }
-                    },
-                    {
-                        "$ref": "#/components/schemas/ObjectiveFunctionRequestBody"
-                    },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "createdAt": {
-                                "type": "string",
-                                "description": "Data e hora de criação da função objetivo"
-                            }
-                        }
-                    }
-                ]
-            },
-            "OptimizationRunRequestBody": {
-                "type": "object",
-                "required": ["objectiveFunctionId", "populationSize","crossoverProbability", "perturbationFactor", "chromosomeElementDetails", "maxGenerations", "objectiveFunctionEvaluationTimeoutSeconds"],
-                "properties": {
-                    "objectiveFunctionId": {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "Id da função objetivo utilizada na rodada de otimização"
-                    },
-                    "populationSize": {
-                        "type": "integer",
-                        "description": "Tamanho das populações criadas na rodada de otimização"
-                    },
-                    "strategy": {
-                        "type": "string",
-                        "description": "Estratégia de evolução diferencial adotada na rodada de otimização",
-                        "enum": ["DE_RAND_1_BIN", "DE_BEST_1_BIN", "DE_RAND_2_BIN", "DE_BEST_2_BIN"],
-                        "default": "DE_RAND_1_BIN"
-                    },
-                    "crossoverProbability": {
-                        "type": "number",
-                        "description": "Valor de 0 a 1 representando a probabilidade de crossover"
-                    },
-                    "perturbationFactor": {
-                        "type": "number",
-                        "description": "Valor do fator de perturbação utilizado"
-                    },
-                    "maxGenerations": {
-                        "type": "integer",
-                        "description": "Número máximo de gerações utilizado como critério de parada para a rodada de otimização"
-                    },
-                    "valueToReach": {
-                        "type": ["number", "null"],
-                        "description": "Valor mínimo de função objetivo atingido, utilizado como critério de parada para a rodada de otimização"
-                    },
-                    "objectiveFunctionEvaluationTimeoutSeconds": {
-                        "type": "integer",
-                        "description": "Tempo máximo em segundos que um cromossomo pode permanecer no status EVALUATING antes de ser considerado objectiveFunctionEvaluationTimeoutSeconds"
-                    },
-                    "maxObjectiveFunctionReEvaluations": {
-                        "type": "integer",
-                        "description": "Máximo de re-avaliações da função objetivo para um cromossomo que atinge o tempo limite",
-                        "default": 3
-                    },
-                    "chromosomeElementDetails": {
-                        "type": "array",
-                        "description": "Array contendo a especificação das variáveis de otimização utilizadas nessa rodada de otimização",
-                        "items": {
-                            "type": "object",
-                            "required": ["name", "position", "lowerBoundary", "upperBoundary"],
-                            "properties": {
-                                "name": {
-                                    "type": "string",
-                                    "description": "Nome da variável de otimização"
-                                },
-                                "position": {
-                                    "type": "integer",
-                                    "description": "Posição da variavel de otimização no vetor"
-                                },
-                                "lowerBoundary": {
-                                    "type": "number",
-                                    "description": "Valor do limite inferior da variável de otimização"
-                                },
-                                "upperBoundary": {
-                                    "type": "number",
-                                    "description": "Valor do limite superior da variável de otimização"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "CreateOptimizationRunResponseBody": {
-                "allOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer",
-                                "format": "int64",
-                                "description": "Identificador único da rodada de otimização"
-                            }
-                        }
-                    },
-                    {
-                        "$ref": "#/components/schemas/OptimizationRunRequestBody"
-                    },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "status": {
-                                "type": "string",
-                                "description": "Status da rodada de otimização",
-                                "enum": ["RUNNING", "FINISHED"]
-                            }
-                        }
-                    }
-                ]
-            },
-            "GetOptimizationRunResponseBody": {
-                "allOf": [
-                    {
-                        "$ref": "#/components/schemas/CreateOptimizationRunResponseBody"
-                    },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "bestSoFarChromosome": {
-                                "$ref": "#/components/schemas/ChromosomeResponseBody"
-                            },
-                            "currentGeneration": {
-                                "type": "integer",
-                                "description": "geração atual da rodada de otimização"
-                            },
-                            "timeToFinishInSeconds": {
-                                "type": "integer",
-                                "description": "Tempo em segundos entre a criação e finalização da rodada de otimização caso exista"
-                            },
-                            "finishedAt": {
-                                "type": "string",
-                                "description": "Data e hora de finalização da rodada de otimização caso exista"
-                            },
-                            "createdAt": {
-                                "type": "string",
-                                "description": "Data e hora de criação da rodada de otimização"
-                            }
-                        }
-                    }
-                ]
-            },
-            "PatchOptimizationRunRequestBody": {
+  "openapi":"3.1.0",
+  "info": {
+    "title":"Distributed Differential Evolution",
+    "description": "Api de interação com a aplicação mestre de evolução diferencial distribuída",
+    "version":"1.0",
+    "contact": {
+      "name": "Daniel Ribeiro Santiago",
+      "email": "daanrsantiago@gmail.com"
+    }
+  },
+  "servers": [
+    {
+      "url":"http://localhost:8080",
+      "description": "Servidor local"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "PageSchema": {
+        "type": "object",
+        "properties": {
+          "totalPages": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "pageable": {
+            "type": "object",
+            "properties": {
+              "pageNumber": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "integer"
+              },
+              "sort": {
                 "type": "object",
                 "properties": {
-                    "crossoverProbability": {
-                        "type": "number",
-                        "description": "Valor de 0 a 1 representando a probabilidade de crossover"
-                    },
-                    "perturbationFactor": {
-                        "type": "number",
-                        "description": "Valor do fator de perturbação utilizado"
-                    },
-                    "maxGenerations": {
-                        "type": "integer",
-                        "description": "Número máximo de gerações utilizado como critério de parada para a rodada de otimização"
-                    },
-                    "valueToReach": {
-                        "type": "number",
-                        "description": "Valor mínimo de função objetivo atingido, utilizado como critério de parada para a rodada de otimização"
-                    },
-                    "objectiveFunctionEvaluationTimeoutSeconds": {
-                        "type": "integer",
-                        "description": "Tempo máximo em segundos que um cromossomo pode permanecer no status EVALUATING antes de ser considerado objectiveFunctionEvaluationTimeoutSeconds"
-                    },
-                    "maxObjectiveFunctionReEvaluations": {
-                        "type": "integer",
-                        "description": "Máximo de re-avaliações da função objetivo para um cromossomo que atinge o tempo limite"
-                    }
-                }
-            },
-            "PopulationResponseBody": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "Identificador único da população"
-                    },
-                    "optimizationRunId": {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "Id da rodada de otimização associada"
-                    },
-                    "generation": {
-                        "type": "integer",
-                        "description": "Número da geração que a população representa"
-                    },
-                    "members": {
-                        "type": "array",
-                        "description": "Lista de cromossomos que compõe a população",
-                        "items": {
-                            "$ref": "#/components/schemas/ChromosomeResponseBody"
-                        }
-                    },
-                    "chromosomesRemainingToBeEvaluated": {
-                        "type": "integer",
-                        "description": "Número de cromosomos que faltam ser avaliados associados a população"
-                    },
-                    "createAt": {
-                        "type": "string",
-                        "description": "Data e hora da criação da população"
-                    }
-                }
-            },
-            "PopulationStatisticsResponseBody": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "format": "int64"
-                  },
-                  "optimizationRunId": {
-                    "type": "integer",
-                    "format": "int64"
-                  },
-                  "generation": {
-                    "type": "integer"
-                  },
-                  "bestChromosome": {
-                    "$ref": "#/components/schemas/ChromosomeResponseBody"
-                  },
-                  "bestFitness": {
-                    "type": ["number", "null"]
-                  },
-                  "meanFitness": {
-                    "type": "number"
-                  },
-                  "worstFitness": {
-                    "type": ["number", "null"]
-                  }
-                },
-                "required": [
-                  "optimizationRunId",
-                  "generation"
-                ]
-            },
-            "PaginatedPopulationsResponseBody": {
-                "type": "object",
-                "properties": {
-                  "totalPages": {
-                    "type": "integer"
-                  },
-                  "totalElements": {
-                    "type": "integer"
-                  },
-                  "pageable": {
-                    "type": "object",
-                    "properties": {
-                      "pageNumber": {
-                        "type": "integer"
-                      },
-                      "pageSize": {
-                        "type": "integer"
-                      },
-                      "sort": {
-                        "type": "object",
-                        "properties": {
-                          "sorted": {
-                            "type": "boolean"
-                          },
-                          "empty": {
-                            "type": "boolean"
-                          },
-                          "unsorted": {
-                            "type": "boolean"
-                          }
-                        },
-                        "required": ["sorted", "empty", "unsorted"]
-                      },
-                      "offset": {
-                        "type": "integer"
-                      },
-                      "paged": {
-                        "type": "boolean"
-                      },
-                      "unpaged": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": ["pageNumber", "pageSize", "sort", "offset", "paged", "unpaged"]
-                  },
-                  "size": {
-                    "type": "integer"
-                  },
-                  "content": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "integer",
-                                "format": "int64"
-                            },
-                            "optimizationRunId": {
-                                "type": "integer",
-                                "format": "int64"
-                            },
-                            "generation": {
-                                "type": "integer"
-                            },
-                            "statistics": {
-                                "$ref": "#/components/schemas/PopulationStatisticsResponseBody"
-                            },
-                            "createdAt": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                  },
-                  "number": {
-                    "type": "integer"
-                  },
-                  "sort": {
-                    "type": "object",
-                    "properties": {
-                      "sorted": {
-                        "type": "boolean"
-                      },
-                      "empty": {
-                        "type": "boolean"
-                      },
-                      "unsorted": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": ["sorted", "empty", "unsorted"]
-                  },
-                  "first": {
+                  "sorted": {
                     "type": "boolean"
-                  },
-                  "last": {
-                    "type": "boolean"
-                  },
-                  "numberOfElements": {
-                    "type": "integer"
                   },
                   "empty": {
                     "type": "boolean"
+                  },
+                  "unsorted": {
+                    "type": "boolean"
                   }
                 },
-                "required": [
-                  "totalPages",
-                  "totalElements",
-                  "pageable",
-                  "size",
-                  "content",
-                  "number",
-                  "sort",
-                  "first",
-                  "last",
-                  "numberOfElements",
-                  "empty"
-                ]
+                "required": ["sorted", "empty", "unsorted"]
+              },
+              "offset": {
+                "type": "integer"
+              },
+              "paged": {
+                "type": "boolean"
+              },
+              "unpaged": {
+                "type": "boolean"
+              }
             },
-            "ChromosomeResponseBody": {
-                "type": ["object", "null"],
-                "properties": {
+            "required": ["pageNumber", "pageSize", "sort", "offset", "paged", "unpaged"]
+          },
+          "size": {
+            "type": "integer"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "sort": {
+            "type": "object",
+            "properties": {
+              "sorted": {
+                "type": "boolean"
+              },
+              "empty": {
+                "type": "boolean"
+              },
+              "unsorted": {
+                "type": "boolean"
+              }
+            },
+            "required": ["sorted", "empty", "unsorted"]
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "totalPages",
+          "totalElements",
+          "pageable",
+          "size",
+          "number",
+          "sort",
+          "first",
+          "last",
+          "numberOfElements",
+          "empty"
+        ]
+      },
+      "ObjectiveFunctionRequestBody": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nome da função objetivo"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descrição da função objetivo"
+          },
+          "hash": {
+            "type": "string",
+            "description": "Hash da função objetivo"
+          }
+        }
+      },
+      "ObjectiveFunctionResponseBody": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Identificador da função objetivo"
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/ObjectiveFunctionRequestBody"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "createdAt": {
+                "type": "string",
+                "description": "Data e hora de criação da função objetivo"
+              }
+            }
+          }
+        ]
+      },
+      "GetObjectiveFunctionPageResponseBody": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageSchema"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ObjectiveFunctionResponseBody"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "OptimizationRunRequestBody": {
+        "type": "object",
+        "required": ["objectiveFunctionId", "populationSize","crossoverProbability", "perturbationFactor", "chromosomeElementDetails", "maxGenerations", "objectiveFunctionEvaluationTimeoutSeconds"],
+        "properties": {
+          "objectiveFunctionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Id da função objetivo utilizada na rodada de otimização"
+          },
+          "populationSize": {
+            "type": "integer",
+            "description": "Tamanho das populações criadas na rodada de otimização"
+          },
+          "strategy": {
+            "type": "string",
+            "description": "Estratégia de evolução diferencial adotada na rodada de otimização",
+            "enum": ["DE_RAND_1_BIN", "DE_BEST_1_BIN", "DE_RAND_2_BIN", "DE_BEST_2_BIN"],
+            "default": "DE_RAND_1_BIN"
+          },
+          "crossoverProbability": {
+            "type": "number",
+            "description": "Valor de 0 a 1 representando a probabilidade de crossover"
+          },
+          "perturbationFactor": {
+            "type": "number",
+            "description": "Valor do fator de perturbação utilizado"
+          },
+          "maxGenerations": {
+            "type": "integer",
+            "description": "Número máximo de gerações utilizado como critério de parada para a rodada de otimização"
+          },
+          "valueToReach": {
+            "type": ["number", "null"],
+            "description": "Valor mínimo de função objetivo atingido, utilizado como critério de parada para a rodada de otimização"
+          },
+          "objectiveFunctionEvaluationTimeoutSeconds": {
+            "type": "integer",
+            "description": "Tempo máximo em segundos que um cromossomo pode permanecer no status EVALUATING antes de ser considerado objectiveFunctionEvaluationTimeoutSeconds"
+          },
+          "maxObjectiveFunctionReEvaluations": {
+            "type": "integer",
+            "description": "Máximo de re-avaliações da função objetivo para um cromossomo que atinge o tempo limite",
+            "default": 3
+          },
+          "chromosomeElementDetails": {
+            "type": "array",
+            "description": "Array contendo a especificação das variáveis de otimização utilizadas nessa rodada de otimização",
+            "items": {
+              "type": "object",
+              "required": ["name", "position", "lowerBoundary", "upperBoundary"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Nome da variável de otimização"
+                },
+                "position": {
+                  "type": "integer",
+                  "description": "Posição da variavel de otimização no vetor"
+                },
+                "lowerBoundary": {
+                  "type": "number",
+                  "description": "Valor do limite inferior da variável de otimização"
+                },
+                "upperBoundary": {
+                  "type": "number",
+                  "description": "Valor do limite superior da variável de otimização"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CreateOptimizationRunResponseBody": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Identificador único da rodada de otimização"
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/OptimizationRunRequestBody"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "description": "Status da rodada de otimização",
+                "enum": ["RUNNING", "FINISHED"]
+              }
+            }
+          }
+        ]
+      },
+      "GetOptimizationRunResponseBody": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CreateOptimizationRunResponseBody"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "bestSoFarChromosome": {
+                "$ref": "#/components/schemas/ChromosomeResponseBody"
+              },
+              "currentGeneration": {
+                "type": "integer",
+                "description": "geração atual da rodada de otimização"
+              },
+              "timeToFinishInSeconds": {
+                "type": "integer",
+                "description": "Tempo em segundos entre a criação e finalização da rodada de otimização caso exista"
+              },
+              "finishedAt": {
+                "type": "string",
+                "description": "Data e hora de finalização da rodada de otimização caso exista"
+              },
+              "createdAt": {
+                "type": "string",
+                "description": "Data e hora de criação da rodada de otimização"
+              }
+            }
+          }
+        ]
+      },
+      "GetOptimizationRunsPageResponseBody": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageSchema"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GetOptimizationRunResponseBody"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PatchOptimizationRunRequestBody": {
+        "type": "object",
+        "properties": {
+          "crossoverProbability": {
+            "type": "number",
+            "description": "Valor de 0 a 1 representando a probabilidade de crossover"
+          },
+          "perturbationFactor": {
+            "type": "number",
+            "description": "Valor do fator de perturbação utilizado"
+          },
+          "maxGenerations": {
+            "type": "integer",
+            "description": "Número máximo de gerações utilizado como critério de parada para a rodada de otimização"
+          },
+          "valueToReach": {
+            "type": "number",
+            "description": "Valor mínimo de função objetivo atingido, utilizado como critério de parada para a rodada de otimização"
+          },
+          "objectiveFunctionEvaluationTimeoutSeconds": {
+            "type": "integer",
+            "description": "Tempo máximo em segundos que um cromossomo pode permanecer no status EVALUATING antes de ser considerado objectiveFunctionEvaluationTimeoutSeconds"
+          },
+          "maxObjectiveFunctionReEvaluations": {
+            "type": "integer",
+            "description": "Máximo de re-avaliações da função objetivo para um cromossomo que atinge o tempo limite"
+          }
+        }
+      },
+      "PopulationResponseBody": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Identificador único da população"
+          },
+          "optimizationRunId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Id da rodada de otimização associada"
+          },
+          "generation": {
+            "type": "integer",
+            "description": "Número da geração que a população representa"
+          },
+          "members": {
+            "type": "array",
+            "description": "Lista de cromossomos que compõe a população",
+            "items": {
+              "$ref": "#/components/schemas/ChromosomeResponseBody"
+            }
+          },
+          "chromosomesRemainingToBeEvaluated": {
+            "type": "integer",
+            "description": "Número de cromosomos que faltam ser avaliados associados a população"
+          },
+          "createAt": {
+            "type": "string",
+            "description": "Data e hora da criação da população"
+          }
+        }
+      },
+      "PopulationPageResponseBody": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageSchema"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PopulationResponseBody"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PopulationStatisticsResponseBody": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "optimizationRunId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "generation": {
+            "type": "integer"
+          },
+          "bestChromosome": {
+            "$ref": "#/components/schemas/ChromosomeResponseBody"
+          },
+          "bestFitness": {
+            "type": ["number", "null"]
+          },
+          "meanFitness": {
+            "type": "number"
+          },
+          "worstFitness": {
+            "type": ["number", "null"]
+          }
+        },
+        "required": [
+          "optimizationRunId",
+          "generation"
+        ]
+      },
+      "PopulationStatisticsPageResponseBody": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageSchema"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
                     "id": {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "Identificação única do cromossomo"
+                      "type": "integer",
+                      "format": "int64"
                     },
-                    "populationId": {
-                        "type": ["integer", "null"],
-                        "format": "int64",
-                        "description": "Id da população ao qual o cromossomo faz parte se existir"
-                    },
-                    "objectiveFunctionId": {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "Id da função objetivo ao qual o cromossomo faz parte"
-                    },
-                    "type": {
-                        "type": "string",
-                        "description": "Tipo do cromossomo",
-                        "enum": ["TARGET", "DIFFERENTIAL", "DONOR", "EXPERIMENTAL"]
-                    },
-                    "targetChromosomeId": {
-                        "type": ["integer", "null"],
-                        "format": "int64",
-                        "description": "Id do cromossomo alvo caso esse seja um cromossomo do tipo EXPERIMENTAL"
-                    },
-                    "targetPopulationId": {
-                        "type": ["integer", "null"],
-                        "format": "int64",
-                        "description": "Id da população do cromossomo alvo caso esse seja um cromossomo do tipo EXPERIMENTAL"
-                    },
-                    "evaluationStatus": {
-                        "type": "string",
-                        "description": "Status de avaliação do cromossomo",
-                        "enum": ["EVALUATED", "NOT_EVALUATED", "EVALUATING", "TIMEOUT", "ERROR"]
-                    },
-                    "evaluationErrorReason": {
-                        "type": ["string", "null"],
-                        "description": "Descrição da razão do erro caso exista"
-                    },
-                    "evaluationRetries": {
-                        "type": "integer",
-                        "description": "Número de retentativas de avaliação do cromossomo"
-                    },
-                    "evaluationId": {
-                        "type": ["string", "null"],
-                        "description": "UUID entregue a quem fez a requisição para obter o cromossomo para avaliação e que deve ser apresentado quando é publicado o resultado da avaliação"
-                    },
-                    "evaluationBeginAt": {
-                        "type": ["string", "null"],
-                        "description": "Data e hora do inicio da avaliação do cromossomo caso exista"
-                    },
-                    "evaluatedAt": {
-                        "type": ["string", "null"],
-                        "description": "Data e hora do final da avaliação do cromossomo caso exista"
+                    "optimizationRunId": {
+                      "type": "integer",
+                      "format": "int64"
                     },
                     "generation": {
-                        "type": "integer",
-                        "description": "Geração da qual o cromossomo faz parte"
+                      "type": "integer"
                     },
-                    "fitness": {
-                        "type": ["number", "null"],
-                        "description": "O valor publicado da função objetivo calculada a partir desse cromossomo caso exista"
-                    },
-                    "elements": {
-                        "type": "array",
-                        "description": "Array contendo os valores das variáveis de otimização para o cromossomo em questão",
-                        "items": {
-                            "type": "number",
-                            "description": "Valor da variável de otimização na posição indicada"
-                        }
+                    "statistics": {
+                      "$ref": "#/components/schemas/PopulationStatisticsResponseBody"
                     },
                     "createdAt": {
-                        "type": "string",
-                        "description": "Data e hora da criação do cromossomo"
+                      "type": "string"
                     }
-                }
-            },
-            "NotEvaluatedChromosomeResponseBody": {
-                "type": "object",
-                "properties": {
-                    "optimizationRunId": {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "Id da rodada de otimização correspondente"
-                    },
-                    "optimizationStatus": {
-                        "type": "string",
-                        "description": "Status da rodada de otimização",
-                        "enum": ["RUNNING", "FINISHED"]
-                    },
-                    "chromosome": {
-                        "$ref": "#/components/schemas/ChromosomeResponseBody"
-                    }
-                }
-            },
-            "PublishEvaluationResultRequestBody": {
-                "type": "object",
-                "required": ["evaluationId", "fitness"],
-                "properties": {
-                    "fitness": {
-                        "type": "number",
-                        "description": "Valor da função objetivo calculada"
-                    },
-                    "evaluationId": {
-                        "type": "string",
-                        "description": "Id de avaliação fornecido ao obter dados do cromossomo a ser avaliado"
-                    }
-                }
-            },
-            "PublishEvaluationErrorRequestBody": {
-                "type": "object",
-                "required": ["evaluationId"],
-                "properties": {
-                    "evaluationId": {
-                        "type": "string",
-                        "description": "Id de avaliação fornecido ao obter dados do cromossomo a ser avaliado"
-                    },
-                    "reason": {
-                        "type": "string",
-                        "description": "Descrição opcional da razão do erro"
-                    }
-                }
-            },
-            "PaginatedChromosomesResponseBody": {
-                "type": "object",
-                "properties": {
-                  "totalPages": {
-                    "type": "integer"
-                  },
-                  "totalElements": {
-                    "type": "integer"
-                  },
-                  "pageable": {
-                    "type": "object",
-                    "properties": {
-                      "pageNumber": {
-                        "type": "integer"
-                      },
-                      "pageSize": {
-                        "type": "integer"
-                      },
-                      "sort": {
-                        "type": "object",
-                        "properties": {
-                          "sorted": {
-                            "type": "boolean"
-                          },
-                          "empty": {
-                            "type": "boolean"
-                          },
-                          "unsorted": {
-                            "type": "boolean"
-                          }
-                        },
-                        "required": ["sorted", "empty", "unsorted"]
-                      },
-                      "offset": {
-                        "type": "integer"
-                      },
-                      "paged": {
-                        "type": "boolean"
-                      },
-                      "unpaged": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": ["pageNumber", "pageSize", "sort", "offset", "paged", "unpaged"]
-                  },
-                  "size": {
-                    "type": "integer"
-                  },
-                  "content": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/ChromosomeResponseBody"
-                    }
-                  },
-                  "number": {
-                    "type": "integer"
-                  },
-                  "sort": {
-                    "type": "object",
-                    "properties": {
-                      "sorted": {
-                        "type": "boolean"
-                      },
-                      "empty": {
-                        "type": "boolean"
-                      },
-                      "unsorted": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": ["sorted", "empty", "unsorted"]
-                  },
-                  "first": {
-                    "type": "boolean"
-                  },
-                  "last": {
-                    "type": "boolean"
-                  },
-                  "numberOfElements": {
-                    "type": "integer"
-                  },
-                  "empty": {
-                    "type": "boolean"
                   }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ChromosomeResponseBody": {
+        "type": ["object", "null"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Identificação única do cromossomo"
+          },
+          "populationId": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Id da população ao qual o cromossomo faz parte se existir"
+          },
+          "objectiveFunctionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Id da função objetivo ao qual o cromossomo faz parte"
+          },
+          "type": {
+            "type": "string",
+            "description": "Tipo do cromossomo",
+            "enum": ["TARGET", "DIFFERENTIAL", "DONOR", "EXPERIMENTAL"]
+          },
+          "targetChromosomeId": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Id do cromossomo alvo caso esse seja um cromossomo do tipo EXPERIMENTAL"
+          },
+          "targetPopulationId": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Id da população do cromossomo alvo caso esse seja um cromossomo do tipo EXPERIMENTAL"
+          },
+          "evaluationStatus": {
+            "type": "string",
+            "description": "Status de avaliação do cromossomo",
+            "enum": ["EVALUATED", "NOT_EVALUATED", "EVALUATING", "TIMEOUT", "ERROR"]
+          },
+          "evaluationErrorReason": {
+            "type": ["string", "null"],
+            "description": "Descrição da razão do erro caso exista"
+          },
+          "evaluationRetries": {
+            "type": "integer",
+            "description": "Número de retentativas de avaliação do cromossomo"
+          },
+          "evaluationId": {
+            "type": ["string", "null"],
+            "description": "UUID entregue a quem fez a requisição para obter o cromossomo para avaliação e que deve ser apresentado quando é publicado o resultado da avaliação"
+          },
+          "evaluationBeginAt": {
+            "type": ["string", "null"],
+            "description": "Data e hora do inicio da avaliação do cromossomo caso exista"
+          },
+          "evaluatedAt": {
+            "type": ["string", "null"],
+            "description": "Data e hora do final da avaliação do cromossomo caso exista"
+          },
+          "generation": {
+            "type": "integer",
+            "description": "Geração da qual o cromossomo faz parte"
+          },
+          "fitness": {
+            "type": ["number", "null"],
+            "description": "O valor publicado da função objetivo calculada a partir desse cromossomo caso exista"
+          },
+          "elements": {
+            "type": "array",
+            "description": "Array contendo os valores das variáveis de otimização para o cromossomo em questão",
+            "items": {
+              "type": "number",
+              "description": "Valor da variável de otimização na posição indicada"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Data e hora da criação do cromossomo"
+          }
+        }
+      },
+      "NotEvaluatedChromosomeResponseBody": {
+        "type": "object",
+        "properties": {
+          "optimizationRunId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Id da rodada de otimização correspondente"
+          },
+          "optimizationStatus": {
+            "type": "string",
+            "description": "Status da rodada de otimização",
+            "enum": ["RUNNING", "FINISHED"]
+          },
+          "chromosome": {
+            "$ref": "#/components/schemas/ChromosomeResponseBody"
+          }
+        }
+      },
+      "PublishEvaluationResultRequestBody": {
+        "type": "object",
+        "required": ["evaluationId", "fitness"],
+        "properties": {
+          "fitness": {
+            "type": "number",
+            "description": "Valor da função objetivo calculada"
+          },
+          "evaluationId": {
+            "type": "string",
+            "description": "Id de avaliação fornecido ao obter dados do cromossomo a ser avaliado"
+          }
+        }
+      },
+      "PublishEvaluationErrorRequestBody": {
+        "type": "object",
+        "required": ["evaluationId"],
+        "properties": {
+          "evaluationId": {
+            "type": "string",
+            "description": "Id de avaliação fornecido ao obter dados do cromossomo a ser avaliado"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Descrição opcional da razão do erro"
+          }
+        }
+      },
+      "ChromosomesPageResponseBody": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PageSchema"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ChromosomeResponseBody"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "requestBodies": {
+      "CreateObjectiveFunctionRequest": {
+        "description": "Requisição para criação de função objetivo",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ObjectiveFunctionRequestBody"
+            },
+            "example": {
+              "name": "Rastrigin 2 variaveis",
+              "description": "Função rastrigin de 2 variáveis",
+              "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94"
+            }
+          }
+        }
+      },
+      "PatchObjectiveFunctionRequest": {
+        "description": "Requisição para a alteração de uma funlão objetivo ja criada",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ObjectiveFunctionRequestBody"
+            },
+            "example": {
+              "name": "Função Rastrigin"
+            }
+          }
+        }
+      },
+      "CreateOptimizationRunRequest": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/OptimizationRunRequestBody"
+            },
+            "example": {
+              "objectiveFunctionId": 2,
+              "populationSize": 20,
+              "strategy": "DE_RAND_1_BIN",
+              "crossoverProbability": 0.8,
+              "perturbationFactor": 0.5,
+              "maxGenerations": 100,
+              "objectiveFunctionEvaluationTimeoutSeconds": 30,
+              "chromosomeElementDetails": [
+                {
+                  "name": "Rastrigin variable 1",
+                  "position": 0,
+                  "lowerBoundary": -5.12,
+                  "upperBoundary": 5.12,
+                  "description": "first variable in  rastrigin functions representing x coordinate"
                 },
-                "required": [
-                  "totalPages",
-                  "totalElements",
-                  "pageable",
-                  "size",
-                  "content",
-                  "number",
-                  "sort",
-                  "first",
-                  "last",
-                  "numberOfElements",
-                  "empty"
-                ]
+                {
+                  "name": "teste element 2",
+                  "position": 1,
+                  "lowerBoundary": -5.12,
+                  "upperBoundary": 5.12,
+                  "description": "second variable in  rastrigin functions representing y coordinate"
+                }
+              ]
             }
+          }
+        }
+      },
+      "PatchOptimizationRunRequest": {
+        "description": "Requisição para alterar parâmetros de uma rodada de otimização existente",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PatchOptimizationRunRequestBody"
+            },
+            "example": {
+              "maxGenerations": 200
+            }
+          }
+        }
+      },
+      "PublishEvaluationResultRequest": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublishEvaluationResultRequestBody"
+            },
+            "example": {
+              "fitness": 60,
+              "evaluationId": "167b969c-342f-447d-8ffb-1a4916341ef0"
+            }
+          }
+        }
+      },
+      "PublishEvaluationError": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublishEvaluationErrorRequestBody"
+            },
+            "example": {
+              "evaluationId" : "0c4791f7-8c9f-468d-94fa-784847d27f21",
+              "reason": "Erro de convergência"
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "CreateObjectiveFunctionResponse": {
+        "description": "Resposta da requisição de criação de função objetivo",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ObjectiveFunctionResponseBody"
+            },
+            "example": {
+              "id": 1,
+              "name": "Rastrigin 2 variaveis",
+              "description": "Função rastrigin de 2 variáveis",
+              "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94",
+              "createAt": "2024-09-10T14:58:53.347584895-03:00"
+            }
+          }
+        }
+      },
+      "GetObjectiveFunctionResponse": {
+        "description": "Resposta da requisição para obtenção de uma função objetivo pelo Id",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ObjectiveFunctionResponseBody"
+            },
+            "example": {
+              "id": 1,
+              "name": "Rastrigin 2 variaveis",
+              "description": "Função rastrigin de 2 variáveis",
+              "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94",
+              "createAt": "2024-09-10T14:58:53.347584895-03:00"
+            }
+          }
+        }
+      },
+      "GetObjectiveFunctionsPageResponse": {
+        "description": "Obtém página de funções objetivo com sucesso",
+        "schema": {
+          "$ref": "#/components/schemas/GetObjectiveFunctionPageResponseBody"
         },
-        "requestBodies": {
-            "CreateObjectiveFunctionRequest": {
-                "description": "Requisição para criação de função objetivo",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/ObjectiveFunctionRequestBody"
-                        },
-                        "example": {
-                                "name": "Rastrigin 2 variaveis",
-                                "description": "Função rastrigin de 2 variáveis",
-                                "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94"
-                        }
-                    }
-                }
+        "example": {
+          "totalPages": 1,
+          "totalElements": 1,
+          "pageable": {
+            "pageNumber": 0,
+            "pageSize": 20,
+            "sort": {
+              "sorted": false,
+              "empty": true,
+              "unsorted": true
             },
-            "PatchObjectiveFunctionRequest": {
-                "description": "Requisição para a alteração de uma funlão objetivo ja criada",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/ObjectiveFunctionRequestBody"
-                        },
-                        "example": {
-                            "name": "Função Rastrigin"
-                        }
-                    }
-                }
-            },
-            "CreateOptimizationRunRequest": {
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/OptimizationRunRequestBody"
-                        },
-                        "example": {
-                            "objectiveFunctionId": 2,
-                            "populationSize": 20,
-                            "strategy": "DE_RAND_1_BIN",
-                            "crossoverProbability": 0.8,
-                            "perturbationFactor": 0.5,
-                            "maxGenerations": 100,
-                            "objectiveFunctionEvaluationTimeoutSeconds": 30,
-                            "chromosomeElementDetails": [
-                                {
-                                    "name": "Rastrigin variable 1",
-                                    "position": 0,
-                                    "lowerBoundary": -5.12,
-                                    "upperBoundary": 5.12,
-                                    "description": "first variable in  rastrigin functions representing x coordinate"
-                                },
-                                {
-                                    "name": "teste element 2",
-                                    "position": 1,
-                                    "lowerBoundary": -5.12,
-                                    "upperBoundary": 5.12,
-                                    "description": "second variable in  rastrigin functions representing y coordinate"
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "PatchOptimizationRunRequest": {
-                "description": "Requisição para alterar parâmetros de uma rodada de otimização existente",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/PatchOptimizationRunRequestBody"
-                        },
-                        "example": {
-                            "maxGenerations": 200
-                        }
-                    }
-                }
-            },
-            "PublishEvaluationResultRequest": {
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/PublishEvaluationResultRequestBody"
-                        },
-                        "example": {
-                            "fitness": 60,
-                            "evaluationId": "167b969c-342f-447d-8ffb-1a4916341ef0"
-                        }
-                    }
-                }
-            },
-            "PublishEvaluationError": {
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/PublishEvaluationErrorRequestBody"
-                        },
-                        "example": {
-                            "evaluationId" : "0c4791f7-8c9f-468d-94fa-784847d27f21",
-                            "reason": "Erro de convergência"
-                        }
-                    }
-                }
+            "offset": 0,
+            "paged": true,
+            "unpaged": false
+          },
+          "first": true,
+          "last": true,
+          "size": 20,
+          "content": [
+            {
+              "id": 1,
+              "name": "bezier curve fitting",
+              "description": "evaluate error on fitting a airfoil surface to a bezier curve",
+              "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94",
+              "createAt": "2024-10-20T10:42:07.098167-03:00"
             }
+          ],
+          "number": 0,
+          "sort": {
+            "sorted": false,
+            "empty": true,
+            "unsorted": true
+          },
+          "numberOfElements": 1,
+          "empty": false
+        }
+      },
+      "PatchObjectiveFunctionResponse": {
+        "description": "Função objetivo alterada com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ObjectiveFunctionResponseBody"
+            },
+            "example": {
+              "id": 1,
+              "name": "Função Rastrigin",
+              "description": "Função rastrigin de 2 variáveis",
+              "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94",
+              "createAt": "2024-09-10T14:58:53.347584895-03:00"
+            }
+          }
+        }
+      },
+      "CreateOptimizationRunResponse": {
+        "description": "Rodada de otimização criada com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CreateOptimizationRunResponseBody"
+            },
+            "example": {
+              "id": 1,
+              "objectiveFunctionId": 2,
+              "populationSize": 20,
+              "strategy": "DE_RAND_1_BIN",
+              "crossoverProbability": 0.8,
+              "perturbationFactor": 0.5,
+              "valueToReach": null,
+              "maxGenerations": 100,
+              "objectiveFunctionEvaluationTimeoutSeconds": 30,
+              "maxObjectiveFunctionReEvaluations": 0,
+              "chromosomeElementDetails": [
+                {
+                  "name": "Rastrigin variable 1",
+                  "position": 0,
+                  "lowerBoundary": -5.12,
+                  "upperBoundary": 5.12,
+                  "description": "first variable in  rastrigin functions representing x coordinate"
+                },
+                {
+                  "name": "teste element 2",
+                  "position": 1,
+                  "lowerBoundary": -5.12,
+                  "upperBoundary": 5.12,
+                  "description": "second variable in  rastrigin functions representing y coordinate"
+                }
+              ],
+              "status": "RUNNING"
+            }
+          }
+        }
+      },
+      "GetOptimizationRunResponse": {
+        "description": "Rodada de otimização encontrada com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/GetOptimizationRunResponseBody"
+            },
+            "example": {
+              "id": 1,
+              "objectiveFunctionId": 1,
+              "populationSize": 20,
+              "strategy": "DE_RAND_1_BIN",
+              "crossoverProbability": 0.8,
+              "perturbationFactor": 0.5,
+              "valueToReach": null,
+              "maxGenerations": 100,
+              "currentGeneration": 100,
+              "bestSoFarChromosome": {
+                "id": 3942,
+                "populationId": null,
+                "optimizationRunId": 1,
+                "objectiveFunctionId": 1,
+                "type": "EXPERIMENTAL",
+                "targetChromosomeId": 3922,
+                "targetPopulationId": 99,
+                "evaluationStatus": "EVALUATED",
+                "evaluationErrorReason": null,
+                "evaluationRetries": 0,
+                "evaluationId": "59f7d4f3-adbc-407e-a6a3-f17c421abad3",
+                "evaluationBeginAt": "2024-09-10T14:59:22.123597-03:00",
+                "evaluatedAt": "2024-09-10T14:59:22.125264-03:00",
+                "generation": 99,
+                "fitness": 3.552713678800501E-15,
+                "elements": [
+                  4.707595264253209E-9,
+                  1.8737016520154776E-9
+                ],
+                "createdAt": "2024-09-10T14:59:22.116171-03:00"
+              },
+              "objectiveFunctionEvaluationTimeoutSeconds": 30,
+              "maxObjectiveFunctionReEvaluations": 0,
+              "status": "FINISHED",
+              "chromosomeElementDetails": [
+                {
+                  "name": "Rastrigin variable 1",
+                  "position": 0,
+                  "lowerBoundary": -5.12,
+                  "upperBoundary": 5.12,
+                  "description": "first variable in  rastrigin functions representing x coordinate"
+                },
+                {
+                  "name": "teste element 2",
+                  "position": 1,
+                  "lowerBoundary": -5.12,
+                  "upperBoundary": 5.12,
+                  "description": "second variable in  rastrigin functions representing y coordinate"
+                }
+              ],
+              "timeToFinishInSeconds": 22,
+              "finishedAt": "2024-09-10T14:59:22.410121-03:00",
+              "createdAt": "2024-09-10T14:59:00.532196-03:00"
+            }
+          }
+        }
+      },
+      "GetOptimizationRunsPageResponse": {
+        "description": "Obtém paginação de rodadas de otimização com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/GetOptimizationRunsPageResponseBody"
+            },
+            "example": {
+              "totalPages": 1,
+              "totalElements": 1,
+              "pageable": {
+                "pageNumber": 0,
+                "pageSize": 20,
+                "sort": {
+                  "sorted": false,
+                  "empty": true,
+                  "unsorted": true
+                },
+                "offset": 0,
+                "paged": true,
+                "unpaged": false
+              },
+              "first": true,
+              "last": true,
+              "size": 20,
+              "content": [
+                {
+                  "id": 1,
+                  "objectiveFunctionId": 1,
+                  "populationSize": 15,
+                  "strategy": "DE_RAND_1_BIN",
+                  "crossoverProbability": 0.8,
+                  "perturbationFactor": 0.5,
+                  "valueToReach": null,
+                  "maxGenerations": 500,
+                  "currentGeneration": 1,
+                  "objectiveFunctionEvaluationTimeoutSeconds": 5,
+                  "maxObjectiveFunctionReEvaluations": 0,
+                  "status": "RUNNING",
+                  "chromosomeElementDetails": [
+                    {
+                      "name": "control point 0 angle",
+                      "position": 0,
+                      "lowerBoundary": 40.0,
+                      "upperBoundary": 90.0,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 0 distance point after",
+                      "position": 1,
+                      "lowerBoundary": 0.005,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 1 angle",
+                      "position": 2,
+                      "lowerBoundary": 0.0,
+                      "upperBoundary": 45.0,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 1 distance point before",
+                      "position": 3,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 1 distance point after",
+                      "position": 4,
+                      "lowerBoundary": 0.005,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 2 angle",
+                      "position": 5,
+                      "lowerBoundary": -10.0,
+                      "upperBoundary": 20.0,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 2 distance point before",
+                      "position": 6,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 2 distance point after",
+                      "position": 7,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 3 angle",
+                      "position": 8,
+                      "lowerBoundary": -30.0,
+                      "upperBoundary": 5.0,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 3 distance point before",
+                      "position": 9,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 3 distance point after",
+                      "position": 10,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 4 angle",
+                      "position": 11,
+                      "lowerBoundary": -30.0,
+                      "upperBoundary": 10.0,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 4 distance point before",
+                      "position": 12,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 4 distance point after",
+                      "position": 13,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 5 angle",
+                      "position": 14,
+                      "lowerBoundary": -30.0,
+                      "upperBoundary": 10.0,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 5 distance point before",
+                      "position": 15,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.13,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 5 distance point after",
+                      "position": 16,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 6 angle",
+                      "position": 17,
+                      "lowerBoundary": -30.0,
+                      "upperBoundary": 10.0,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 6 distance point before",
+                      "position": 18,
+                      "lowerBoundary": 0.005,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 6 distance point after",
+                      "position": 19,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 7 angle",
+                      "position": 20,
+                      "lowerBoundary": -30.0,
+                      "upperBoundary": 10.0,
+                      "description": null
+                    },
+                    {
+                      "name": "control point 7 distance point before",
+                      "position": 21,
+                      "lowerBoundary": 0.01,
+                      "upperBoundary": 0.1,
+                      "description": null
+                    }
+                  ],
+                  "timeToFinishInSeconds": null,
+                  "finishedAt": null,
+                  "createdAt": "2024-10-20T10:48:31.636199-03:00"
+                }
+              ],
+              "number": 0,
+              "sort": {
+                "sorted": false,
+                "empty": true,
+                "unsorted": true
+              },
+              "numberOfElements": 1,
+              "empty": false
+            }
+          }
+        }
+      },
+      "PatchOptimizationRunResponse": {
+        "description": "Rodada de otimização alterada com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/GetOptimizationRunResponseBody"
+            },
+            "example": {
+              "id": 1,
+              "objectiveFunctionId": 1,
+              "populationSize": 20,
+              "strategy": "DE_RAND_1_BIN",
+              "crossoverProbability": 0.8,
+              "perturbationFactor": 0.5,
+              "valueToReach": null,
+              "maxGenerations": 100,
+              "currentGeneration": 100,
+              "bestSoFarChromosome": {
+                "id": 3942,
+                "populationId": null,
+                "optimizationRunId": 1,
+                "objectiveFunctionId": 1,
+                "type": "EXPERIMENTAL",
+                "targetChromosomeId": 3922,
+                "targetPopulationId": 99,
+                "evaluationStatus": "EVALUATED",
+                "evaluationErrorReason": null,
+                "evaluationRetries": 0,
+                "evaluationId": "59f7d4f3-adbc-407e-a6a3-f17c421abad3",
+                "evaluationBeginAt": "2024-09-10T14:59:22.123597-03:00",
+                "evaluatedAt": "2024-09-10T14:59:22.125264-03:00",
+                "generation": 99,
+                "fitness": 3.552713678800501E-15,
+                "elements": [
+                  4.707595264253209E-9,
+                  1.8737016520154776E-9
+                ],
+                "createdAt": "2024-09-10T14:59:22.116171-03:00"
+              },
+              "objectiveFunctionEvaluationTimeoutSeconds": 30,
+              "maxObjectiveFunctionReEvaluations": 0,
+              "status": "FINISHED",
+              "chromosomeElementDetails": [
+                {
+                  "name": "Rastrigin variable 1",
+                  "position": 0,
+                  "lowerBoundary": -5.12,
+                  "upperBoundary": 5.12,
+                  "description": "first variable in  rastrigin functions representing x coordinate"
+                },
+                {
+                  "name": "teste element 2",
+                  "position": 1,
+                  "lowerBoundary": -5.12,
+                  "upperBoundary": 5.12,
+                  "description": "second variable in  rastrigin functions representing y coordinate"
+                }
+              ],
+              "timeToFinishInSeconds": 22,
+              "finishedAt": "2024-09-10T14:59:22.410121-03:00",
+              "createdAt": "2024-09-10T14:59:00.532196-03:00"
+            }
+          }
+        }
+      },
+      "GetPopulationResponse": {
+        "description": "População obtida com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PopulationResponseBody"
+            },
+            "example": {
+              "id": 3,
+              "optimizationRunId": 3,
+              "generation": 1,
+              "members": [
+                {
+                  "id": 71,
+                  "populationId": 3,
+                  "optimizationRunId": 3,
+                  "objectiveFunctionId": 2,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    -1.5867472021857156,
+                    2.3439674550898255
+                  ],
+                  "createdAt": "2024-10-04T00:13:28.75012-03:00"
+                },
+                {
+                  "id": 72,
+                  "populationId": 3,
+                  "optimizationRunId": 3,
+                  "objectiveFunctionId": 2,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    3.804006963802295,
+                    0.5728849519008294
+                  ],
+                  "createdAt": "2024-10-04T00:13:28.750131-03:00"
+                },
+                {
+                  "id": 73,
+                  "populationId": 3,
+                  "optimizationRunId": 3,
+                  "objectiveFunctionId": 2,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    -0.03997956286128712,
+                    1.1652524231784271
+                  ],
+                  "createdAt": "2024-10-04T00:13:28.750139-03:00"
+                },
+                {
+                  "id": 74,
+                  "populationId": 3,
+                  "optimizationRunId": 3,
+                  "objectiveFunctionId": 2,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    -4.405630572426504,
+                    -2.2007155110771714
+                  ],
+                  "createdAt": "2024-10-04T00:13:28.750145-03:00"
+                }
+              ],
+              "chromosomesRemainingToBeEvaluated": 8,
+              "createdAt": "2024-10-04T00:13:28.750149-03:00"
+            }
+          }
+        }
+      },
+      "GetPopulationPageResponse": {
+        "description": "Obtém página de populações com sucesso",
+        "schema": {
+          "$ref": "#/components/schemas/PopulationPageResponseBody"
+        },
+        "example": {
+          "totalPages": 1,
+          "totalElements": 1,
+          "pageable": {
+            "pageNumber": 0,
+            "pageSize": 20,
+            "sort": {
+              "sorted": false,
+              "empty": true,
+              "unsorted": true
+            },
+            "offset": 0,
+            "paged": true,
+            "unpaged": false
+          },
+          "first": true,
+          "last": true,
+          "size": 20,
+          "content": [
+            {
+              "id": 1,
+              "optimizationRunId": 1,
+              "generation": 1,
+              "members": [
+                {
+                  "id": 1,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    44.69053299219638,
+                    0.03043858018534916,
+                    15.670954699759273,
+                    0.04958411309381398,
+                    0.026877774660316506,
+                    9.99950007408038,
+                    0.023992389637723596,
+                    0.024048234629376983,
+                    1.9142514713494698,
+                    0.04279544790547786,
+                    0.03410217269570926,
+                    -5.792420913867655,
+                    0.07518249205659798,
+                    0.024474695917092504,
+                    0.46402232533463206,
+                    0.12457150182770653,
+                    0.053780604121690334,
+                    -29.116255792893583,
+                    0.020758520950177998,
+                    0.017506366691290545,
+                    -24.15416925944117,
+                    0.05613280759799269
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666832-03:00"
+                },
+                {
+                  "id": 2,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    67.99493572972685,
+                    0.01681939336315203,
+                    37.52291913360227,
+                    0.0258657458781667,
+                    0.07122411824828231,
+                    -4.935140384423997,
+                    0.04303869769716687,
+                    0.08043364714243793,
+                    -25.062025692239487,
+                    0.02322147253410218,
+                    0.04250267271659394,
+                    -6.039635196214146,
+                    0.08576776898306598,
+                    0.08717266435457117,
+                    -15.09703415951126,
+                    0.10073851826371476,
+                    0.09360933458710759,
+                    -21.161132431072502,
+                    0.02205520875097253,
+                    0.039734957517211844,
+                    0.1353388430013709,
+                    0.018523099224392953
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666877-03:00"
+                },
+                {
+                  "id": 3,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    59.23734794024804,
+                    0.09856559368818364,
+                    16.672134154449342,
+                    0.046701076731121824,
+                    0.0066399796576339125,
+                    16.47132853897518,
+                    0.07525557005138604,
+                    0.09536676309135084,
+                    -5.364268643770981,
+                    0.019952593847584146,
+                    0.07941037394049862,
+                    4.725827598563669,
+                    0.035505410463472116,
+                    0.014212670522683633,
+                    -4.334470074208824,
+                    0.11236197564816904,
+                    0.05001025657105638,
+                    7.116083695943203,
+                    0.0777171377427823,
+                    0.09646781719036525,
+                    -26.681741655665043,
+                    0.045079783976071
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666889-03:00"
+                },
+                {
+                  "id": 4,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    66.36452910677973,
+                    0.03506223985544169,
+                    26.665130080271656,
+                    0.09041027066377365,
+                    0.06752905814231439,
+                    -3.362552163009304,
+                    0.03109857672214699,
+                    0.07879659377965319,
+                    -28.109637383623863,
+                    0.07646534437595334,
+                    0.015227053118737979,
+                    -28.488276417820238,
+                    0.021540464031404583,
+                    0.054224827469466,
+                    -6.391214039968052,
+                    0.06088217166522554,
+                    0.0211171586510246,
+                    -20.746221585101505,
+                    0.06686195819086277,
+                    0.05389687631278424,
+                    -28.810924472402224,
+                    0.07461896168902901
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666898-03:00"
+                },
+                {
+                  "id": 5,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    50.54928723942922,
+                    0.058933076384572645,
+                    39.87193871732409,
+                    0.06299433440876517,
+                    0.019741279234493276,
+                    -8.326460162777403,
+                    0.035325596202596926,
+                    0.027202868196461158,
+                    -23.19091611105926,
+                    0.046041578440941304,
+                    0.0828211978931994,
+                    1.9424268532240951,
+                    0.09313805451046034,
+                    0.06433939728871396,
+                    -26.762268680519526,
+                    0.03894678335773452,
+                    0.02891597981543615,
+                    -28.41491291583242,
+                    0.06769251324069317,
+                    0.07671473586308568,
+                    -2.892905389669103,
+                    0.02240797860351154
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666906-03:00"
+                },
+                {
+                  "id": 6,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    86.66980704451018,
+                    0.0681016353949005,
+                    1.7588943242055528,
+                    0.08650773772101931,
+                    0.05384011883271717,
+                    19.160523009971083,
+                    0.04840195667831095,
+                    0.08576057603840874,
+                    -21.898860623857335,
+                    0.04554896817981774,
+                    0.07046288366709949,
+                    -28.405603702536936,
+                    0.02392754933393046,
+                    0.07549737540556324,
+                    -2.2959329964750737,
+                    0.0706420231699225,
+                    0.04386121849900035,
+                    -22.089081789439888,
+                    0.07751872859681956,
+                    0.06385198272707646,
+                    -11.022699833372947,
+                    0.0600254894990795
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666915-03:00"
+                },
+                {
+                  "id": 7,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    62.9603242842892,
+                    0.01026507581567694,
+                    30.44443406518714,
+                    0.04544313038317328,
+                    0.052200223253534316,
+                    17.276671996890357,
+                    0.0769481923166947,
+                    0.028720851407630414,
+                    -11.630751812937387,
+                    0.023157489514742596,
+                    0.05636554862197249,
+                    5.811563995061057,
+                    0.02408042239486707,
+                    0.06578797561716554,
+                    4.413541998115264,
+                    0.09330969050736472,
+                    0.026502626746772166,
+                    -29.362985132812092,
+                    0.0544296223167781,
+                    0.015877843885454938,
+                    8.415754684228808,
+                    0.06396792956143607
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666922-03:00"
+                },
+                {
+                  "id": 8,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    86.9593775872869,
+                    0.0659161900718814,
+                    18.423410498501635,
+                    0.016039865847102732,
+                    0.07439202361606977,
+                    -4.797995039489738,
+                    0.09593327617889505,
+                    0.01618952402185147,
+                    0.15923492678298246,
+                    0.04147701227752458,
+                    0.09761926011268257,
+                    5.085367056220001,
+                    0.09918923824616264,
+                    0.05194488657702887,
+                    -29.230134645018797,
+                    0.037598891041927575,
+                    0.06783089664041074,
+                    -22.168840440405937,
+                    0.02051099875522999,
+                    0.06368014894556351,
+                    -27.159496569695275,
+                    0.020967346465089423
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.66693-03:00"
+                },
+                {
+                  "id": 9,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    54.22668431157301,
+                    0.09857418128750188,
+                    32.86721018622437,
+                    0.0342614093547799,
+                    0.00837624853654805,
+                    18.237905044042762,
+                    0.031436087863931435,
+                    0.06496663058019533,
+                    -12.01264812244628,
+                    0.0610900083221939,
+                    0.06437918423060214,
+                    -14.10429137294313,
+                    0.043895564019648975,
+                    0.03140752037318105,
+                    -18.785128765368746,
+                    0.03722158813330493,
+                    0.03233366586935833,
+                    -22.952252121199038,
+                    0.03157508158372446,
+                    0.0946405462723451,
+                    1.8034223874069752,
+                    0.03029168030750993
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666938-03:00"
+                },
+                {
+                  "id": 10,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    50.60728196899335,
+                    0.08238852067928727,
+                    34.43713886900507,
+                    0.09423908213662961,
+                    0.0608722009300332,
+                    -9.535345817278758,
+                    0.06613397548603384,
+                    0.06172928640324011,
+                    -24.597852082614693,
+                    0.09617915408789134,
+                    0.024042461824592874,
+                    1.0229094326347443,
+                    0.0406881369105683,
+                    0.0128450253016118,
+                    -7.7595224757762615,
+                    0.04949889635397629,
+                    0.021265680231832902,
+                    -24.031829857648308,
+                    0.011228788304010634,
+                    0.01426182294174066,
+                    -0.21744548648060658,
+                    0.07190773352410994
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666945-03:00"
+                },
+                {
+                  "id": 11,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    49.6642136285157,
+                    0.07392951770758725,
+                    32.89294476422602,
+                    0.0744406428019364,
+                    0.09071074145193878,
+                    19.261864888141833,
+                    0.07090328899189374,
+                    0.08434842812026483,
+                    2.475357198648126,
+                    0.01919503245599922,
+                    0.09954297559025538,
+                    -9.547890914471374,
+                    0.06077693553620643,
+                    0.033595206157946006,
+                    -2.4190073365210125,
+                    0.10403614460592678,
+                    0.08545924173713403,
+                    3.987010699794986,
+                    0.08216651762649958,
+                    0.06852553735449134,
+                    9.39594548383127,
+                    0.049270140051537174
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666959-03:00"
+                },
+                {
+                  "id": 12,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    82.56970326671998,
+                    0.01833172934368911,
+                    23.539370070450037,
+                    0.06522498064722775,
+                    0.07813273201110894,
+                    14.157959922175717,
+                    0.014300494479914718,
+                    0.07962281395683429,
+                    -2.304534366876773,
+                    0.010401637118528194,
+                    0.01414649991787512,
+                    -21.82924888176578,
+                    0.038655037967032076,
+                    0.0847771906598277,
+                    -3.147785465366482,
+                    0.11471000302886873,
+                    0.06030733596344333,
+                    -20.71865964323071,
+                    0.04525609976552549,
+                    0.09294315212802794,
+                    -8.540294986160998,
+                    0.07647083682194844
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.66697-03:00"
+                },
+                {
+                  "id": 13,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    45.749264428610594,
+                    0.025710219022021457,
+                    7.380782101201648,
+                    0.030165690027119003,
+                    0.035958385549398626,
+                    -2.4425062775294224,
+                    0.0975950520270877,
+                    0.03613072101113647,
+                    -1.7473841248846647,
+                    0.03814728341330771,
+                    0.09166249271642278,
+                    -22.14774393397727,
+                    0.0925936228549226,
+                    0.022928959192246252,
+                    -17.63064614789322,
+                    0.0976764480012332,
+                    0.03210927562413905,
+                    -21.546391897692374,
+                    0.08748337367317202,
+                    0.01593949898844749,
+                    -29.247262529389204,
+                    0.038701307553215984
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666978-03:00"
+                },
+                {
+                  "id": 14,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    81.14202143738402,
+                    0.04551395130206489,
+                    34.693488630093654,
+                    0.05828721150300956,
+                    0.02021070496878797,
+                    0.5032957277104462,
+                    0.010401802153325004,
+                    0.039524264164328415,
+                    1.5518165225274707,
+                    0.04915052850981985,
+                    0.033820645515311144,
+                    -17.555140062236745,
+                    0.08367486239257153,
+                    0.07477549940877667,
+                    -24.99301930070249,
+                    0.04652497502689124,
+                    0.017638876020070433,
+                    -19.266772709286112,
+                    0.011837738490259538,
+                    0.02684429762687858,
+                    -12.598839265590087,
+                    0.01944597185797614
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666987-03:00"
+                },
+                {
+                  "id": 15,
+                  "populationId": 1,
+                  "optimizationRunId": 1,
+                  "objectiveFunctionId": 1,
+                  "type": "TARGET",
+                  "targetChromosomeId": null,
+                  "targetPopulationId": null,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    48.52091648817087,
+                    0.06444451812085224,
+                    17.070412717776676,
+                    0.0437220898799496,
+                    0.07152039553244634,
+                    17.129342703923662,
+                    0.09086011578083643,
+                    0.054550008525623354,
+                    -7.176314738249154,
+                    0.0946228466826932,
+                    0.0848018040178048,
+                    -25.76068073994218,
+                    0.018445332227263432,
+                    0.015371296379361198,
+                    4.3936272522972715,
+                    0.10934806435602733,
+                    0.09403312545694331,
+                    -19.47188232528559,
+                    0.06172966711964038,
+                    0.027180114045249844,
+                    -8.535354169633536,
+                    0.05688536176779183
+                  ],
+                  "createdAt": "2024-10-20T10:48:31.666995-03:00"
+                }
+              ],
+              "chromosomesRemainingToBeEvaluated": 30,
+              "createdAt": "2024-10-20T10:48:31.667058-03:00"
+            }
+          ],
+          "number": 0,
+          "sort": {
+            "sorted": false,
+            "empty": true,
+            "unsorted": true
+          },
+          "numberOfElements": 1,
+          "empty": false
+        }
+      },
+      "GetPopulationsByOptimizationRunId": {
+        "description": "Obtém paginação de populações por id da rodada de otimização com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PopulationStatisticsPageResponseBody"
+            },
+            "example": {
+              "totalPages": 1,
+              "totalElements": 1,
+              "pageable": {
+                "pageNumber": 0,
+                "pageSize": 20,
+                "sort": {
+                  "sorted": false,
+                  "empty": true,
+                  "unsorted": true
+                },
+                "offset": 0,
+                "paged": true,
+                "unpaged": false
+              },
+              "size": 20,
+              "content": [
+                {
+                  "id": 1,
+                  "optimizationRunId": 1,
+                  "generation": 1,
+                  "statistics": {
+                    "populationId": 1,
+                    "optimizationRunId": 1,
+                    "generation": 1,
+                    "bestChromosome": {
+                      "id": 1,
+                      "populationId": 1,
+                      "optimizationRunId": 1,
+                      "objectiveFunctionId": 1,
+                      "type": "TARGET",
+                      "targetChromosomeId": null,
+                      "targetPopulationId": null,
+                      "evaluationStatus": "NOT_EVALUATED",
+                      "evaluationErrorReason": null,
+                      "evaluationRetries": 0,
+                      "evaluationId": null,
+                      "evaluationBeginAt": null,
+                      "evaluatedAt": null,
+                      "generation": 1,
+                      "fitness": null,
+                      "elements": [
+                        89.33662745938034,
+                        0.03081140435080778,
+                        15.886014769347106,
+                        0.08533261269383674,
+                        0.04021240993159459,
+                        18.45759072657472,
+                        0.04601051749228053,
+                        0.025882461300815736,
+                        -2.9368966928087907,
+                        0.05242647513425367,
+                        0.04291702466376496,
+                        5.863993959094749,
+                        0.048746596456198325,
+                        0.09313907611028921,
+                        -7.582343920609745,
+                        0.11478499108269906,
+                        0.08666838571160777,
+                        -1.3704090512607436,
+                        0.013761256920658674,
+                        0.07636203393709666,
+                        -16.457964644904305,
+                        0.020622509318266903
+                      ],
+                      "createdAt": "2024-10-01T15:35:45.896363-03:00"
+                    },
+                    "bestFitness": null,
+                    "meanFitness": 0.0,
+                    "worstFitness": null
+                  },
+                  "createdAt": "2024-10-01T15:35:45.896524-03:00"
+                }
+              ],
+              "number": 0,
+              "sort": {
+                "sorted": false,
+                "empty": true,
+                "unsorted": true
+              },
+              "first": true,
+              "last": true,
+              "numberOfElements": 1,
+              "empty": false
+            }
+          }
+        }
+      },
+      "GetPopulationStatisticsResponse": {
+        "description": "Obtém dados estatísticos da população pelo ID com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PopulationStatisticsResponseBody"
+            },
+            "example": {
+              "populationId": 1,
+              "optimizationRunId": 1,
+              "generation": 1,
+              "bestChromosome": {
+                "id": 1,
+                "populationId": 1,
+                "optimizationRunId": 1,
+                "objectiveFunctionId": 1,
+                "type": "TARGET",
+                "targetChromosomeId": null,
+                "targetPopulationId": null,
+                "evaluationStatus": "NOT_EVALUATED",
+                "evaluationErrorReason": null,
+                "evaluationRetries": 0,
+                "evaluationId": null,
+                "evaluationBeginAt": null,
+                "evaluatedAt": null,
+                "generation": 1,
+                "fitness": null,
+                "elements": [
+                  89.33662745938034,
+                  0.03081140435080778,
+                  15.886014769347106,
+                  0.08533261269383674,
+                  0.04021240993159459,
+                  18.45759072657472,
+                  0.04601051749228053,
+                  0.025882461300815736,
+                  -2.9368966928087907,
+                  0.05242647513425367,
+                  0.04291702466376496,
+                  5.863993959094749,
+                  0.048746596456198325,
+                  0.09313907611028921,
+                  -7.582343920609745,
+                  0.11478499108269906,
+                  0.08666838571160777,
+                  -1.3704090512607436,
+                  0.013761256920658674,
+                  0.07636203393709666,
+                  -16.457964644904305,
+                  0.020622509318266903
+                ],
+                "createdAt": "2024-10-01T15:35:45.896363-03:00"
+              },
+              "bestFitness": null,
+              "meanFitness": 0.0,
+              "worstFitness": null
+            }
+          }
+        }
+      },
+      "GetChromosomeResponse": {
+        "description": "Cromossomo obtido com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ChromosomeResponseBody"
+            },
+            "example": {
+              "id": 50,
+              "populationId": 2,
+              "optimizationRunId": 2,
+              "objectiveFunctionId": 2,
+              "type": "TARGET",
+              "targetChromosomeId": null,
+              "targetPopulationId": null,
+              "evaluationStatus": "NOT_EVALUATED",
+              "evaluationErrorReason": null,
+              "evaluationRetries": 0,
+              "evaluationId": null,
+              "evaluationBeginAt": null,
+              "evaluatedAt": null,
+              "generation": 1,
+              "fitness": null,
+              "elements": [
+                2.4622712427296385,
+                -1.368462268333119
+              ],
+              "createdAt": "2024-10-04T00:12:31.128781-03:00"
+            }
+          }
+        }
+      },
+      "GetChromosomesPageResponse": {
+        "description": "Obtém página de cromosomos com sucesso",
+        "schema": {
+          "$ref": "#/components/schemas/ChromosomesPageResponseBody"
+        },
+        "example": {
+          "totalPages": 15,
+          "totalElements": 30,
+          "pageable": {
+            "pageNumber": 0,
+            "pageSize": 2,
+            "sort": {
+              "sorted": false,
+              "empty": true,
+              "unsorted": true
+            },
+            "offset": 0,
+            "paged": true,
+            "unpaged": false
+          },
+          "first": true,
+          "last": false,
+          "size": 2,
+          "content": [
+            {
+              "id": 1,
+              "populationId": 1,
+              "optimizationRunId": 1,
+              "objectiveFunctionId": 1,
+              "type": "TARGET",
+              "targetChromosomeId": null,
+              "targetPopulationId": null,
+              "evaluationStatus": "NOT_EVALUATED",
+              "evaluationErrorReason": null,
+              "evaluationRetries": 0,
+              "evaluationId": null,
+              "evaluationBeginAt": null,
+              "evaluatedAt": null,
+              "generation": 1,
+              "fitness": null,
+              "elements": [
+                66.8867086541971,
+                0.09496501555279416,
+                19.225877000836736,
+                0.06518583890143394,
+                0.007944722980818731,
+                -5.175002758602112,
+                0.01806440767660525,
+                0.05015609545765083,
+                -22.6629362440525,
+                0.06954140611165402,
+                0.03154633719887232,
+                -9.735435690812444,
+                0.07799661444849904,
+                0.052314292660062184,
+                8.533721405789478,
+                0.015526014836528039,
+                0.04329262150038053,
+                -12.649631930344938,
+                0.0546462002175077,
+                0.014833379327650859,
+                -20.59185571469955,
+                0.050600237954409565
+              ],
+              "createdAt": "2024-10-20T12:58:13.272414-03:00"
+            },
+            {
+              "id": 2,
+              "populationId": 1,
+              "optimizationRunId": 1,
+              "objectiveFunctionId": 1,
+              "type": "TARGET",
+              "targetChromosomeId": null,
+              "targetPopulationId": null,
+              "evaluationStatus": "NOT_EVALUATED",
+              "evaluationErrorReason": null,
+              "evaluationRetries": 0,
+              "evaluationId": null,
+              "evaluationBeginAt": null,
+              "evaluatedAt": null,
+              "generation": 1,
+              "fitness": null,
+              "elements": [
+                46.22707451901088,
+                0.069352806505822,
+                2.1599806279488036,
+                0.05234030094852985,
+                0.0552702727506589,
+                15.26000569198117,
+                0.04216506222917127,
+                0.05488500107233227,
+                1.2225305758193663,
+                0.07679316161755868,
+                0.08641835402158075,
+                -5.207188326832689,
+                0.04774061983992764,
+                0.058189209306154344,
+                6.19945498681836,
+                0.10711565023699726,
+                0.08767422448131282,
+                -0.2810013939277667,
+                0.027522242532888635,
+                0.023914887779108506,
+                -5.116161564443644,
+                0.06184413863113029
+              ],
+              "createdAt": "2024-10-20T12:58:13.272442-03:00"
+            }
+          ],
+          "number": 0,
+          "sort": {
+            "sorted": false,
+            "empty": true,
+            "unsorted": true
+          },
+          "numberOfElements": 2,
+          "empty": false
+        }
+      },
+      "GetNotEvaluatedChromosomeResponse": {
+        "description": "Obtem chromossomo não avaliado com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/NotEvaluatedChromosomeResponseBody"
+            },
+            "examples": {
+              "otimização em andamento": {
+                "description": "Resposta fornecida quando a otimização ainda está em andamento e existe um cromossomo não avaliado",
+                "value": {
+                  "optimizationRunId": 2,
+                  "optimizationStatus": "RUNNING",
+                  "chromosome": {
+                    "id": 33,
+                    "populationId": 2,
+                    "optimizationRunId": 2,
+                    "objectiveFunctionId": 2,
+                    "type": "TARGET",
+                    "targetChromosomeId": null,
+                    "targetPopulationId": null,
+                    "evaluationStatus": "EVALUATING",
+                    "evaluationErrorReason": null,
+                    "evaluationRetries": 0,
+                    "evaluationId": "0c4791f7-8c9f-468d-94fa-784847d27f21",
+                    "evaluationBeginAt": "2024-10-04T00:25:07.857435201-03:00",
+                    "evaluatedAt": null,
+                    "generation": 1,
+                    "fitness": null,
+                    "elements": [
+                      -0.8134725394883535,
+                      -1.3194101740244912
+                    ],
+                    "createdAt": "2024-10-04T00:12:31.128505-03:00"
+                  }
+                }
+              },
+              "otimização finalizada": {
+                "description": "Resposta fornecida quando otimização ja finalizou",
+                "value": {
+                  "optimizationRunId": 2,
+                  "optimizationStatus": "FINISHED",
+                  "chromosome": null
+                }
+              }
+            }
+          }
+        }
+      },
+      "PublishEvaluationResultResponse": {
+        "description": "Avaliação do cromossomo publicada com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ChromosomeResponseBody"
+            },
+            "example": {
+              "id": 32,
+              "populationId": 2,
+              "optimizationRunId": 2,
+              "objectiveFunctionId": 2,
+              "type": "TARGET",
+              "targetChromosomeId": null,
+              "targetPopulationId": null,
+              "evaluationStatus": "EVALUATED",
+              "evaluationErrorReason": null,
+              "evaluationRetries": 0,
+              "evaluationId": "d0f03be3-9243-4e63-9f56-ac0298c41ab7",
+              "evaluationBeginAt": "2024-10-04T00:20:40.743857-03:00",
+              "evaluatedAt": "2024-10-04T00:20:44.88086655-03:00",
+              "generation": 1,
+              "fitness": 60.0,
+              "elements": [
+                0.8909203189534791,
+                4.179934087979121
+              ],
+              "createdAt": "2024-10-04T00:12:31.128487-03:00"
+            }
+          }
+        }
+      },
+      "GetChromosomesByTargetPopulationIdResponse": {
+        "description": "Obtém paginação de cromossomos por id da população alvo com sucesso",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ChromosomesPageResponseBody"
+            },
+            "example": {
+              "totalPages": 7,
+              "totalElements": 20,
+              "pageable": {
+                "pageNumber": 0,
+                "pageSize": 3,
+                "sort": {
+                  "sorted": false,
+                  "empty": true,
+                  "unsorted": true
+                },
+                "offset": 0,
+                "paged": true,
+                "unpaged": false
+              },
+              "size": 3,
+              "content": [
+                {
+                  "id": 51,
+                  "populationId": null,
+                  "optimizationRunId": 2,
+                  "objectiveFunctionId": 2,
+                  "type": "EXPERIMENTAL",
+                  "targetChromosomeId": 31,
+                  "targetPopulationId": 2,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    3.8674075642025416,
+                    -2.532454005174685
+                  ],
+                  "createdAt": "2024-10-04T00:12:31.208284-03:00"
+                },
+                {
+                  "id": 52,
+                  "populationId": null,
+                  "optimizationRunId": 2,
+                  "objectiveFunctionId": 2,
+                  "type": "EXPERIMENTAL",
+                  "targetChromosomeId": 32,
+                  "targetPopulationId": 2,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    0.8909203189534791,
+                    4.179934087979121
+                  ],
+                  "createdAt": "2024-10-04T00:12:31.208308-03:00"
+                },
+                {
+                  "id": 53,
+                  "populationId": null,
+                  "optimizationRunId": 2,
+                  "objectiveFunctionId": 2,
+                  "type": "EXPERIMENTAL",
+                  "targetChromosomeId": 33,
+                  "targetPopulationId": 2,
+                  "evaluationStatus": "NOT_EVALUATED",
+                  "evaluationErrorReason": null,
+                  "evaluationRetries": 0,
+                  "evaluationId": null,
+                  "evaluationBeginAt": null,
+                  "evaluatedAt": null,
+                  "generation": 1,
+                  "fitness": null,
+                  "elements": [
+                    -0.8134725394883535,
+                    -1.3194101740244912
+                  ],
+                  "createdAt": "2024-10-04T00:12:31.20833-03:00"
+                }
+              ],
+              "number": 0,
+              "sort": {
+                "sorted": false,
+                "empty": true,
+                "unsorted": true
+              },
+              "first": true,
+              "last": false,
+              "numberOfElements": 3,
+              "empty": false
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "PaginationSizeParameter": {
+        "name": "size",
+        "description": "Número de elementos na paginação",
+        "required": false,
+        "in": "query",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "PaginationPageParameter": {
+        "name": "page",
+        "description": "Número da página requisitada",
+        "required": false,
+        "in": "query",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "PaginationSortParameter": {
+        "name": "sort",
+        "description": "Propriedades para ordenar a paginação e a direção de ordenação",
+        "required": false,
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "example": "optimizationRunId,DESC"
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "ObjectiveFunction",
+      "description": "Função objetivo a ser usada durante as rodadas de otimização"
+    },
+    {
+      "name": "OptimizationRun",
+      "description": "Recurso que representa uma rodada de otimização"
+    },
+    {
+      "name": "Population",
+      "description": "Recurso que representa uma população"
+    },
+    {
+      "name": "Chromosome",
+      "description": "Recurso que representa um cromossomo"
+    }
+  ],
+  "paths": {
+    "/objectiveFunction": {
+      "get": {
+        "description": "Obtém página de funções objetivo",
+        "tags": ["ObjectiveFunction"],
+        "operationId": "getObjectiveFunctionsPage",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaginationPageParameter"
+          },
+          {
+            "$ref": "#/components/parameters/PaginationSizeParameter"
+          },
+          {
+            "$ref": "#/components/parameters/PaginationSortParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetObjectiveFunctionsPageResponse"
+          }
+        }
+      },
+      "post": {
+        "description": "Requisição para a criação de uma função objetivo",
+        "tags": ["ObjectiveFunction"],
+        "operationId": "createObjectiveFunction",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/CreateObjectiveFunctionRequest"
         },
         "responses": {
-            "CreateObjectiveFunctionResponse": {
-                "description": "Resposta da requisição de criação de função objetivo",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/ObjectiveFunctionResponseBody"
-                        },
-                        "example": {
-                            "id": 1,
-                            "name": "Rastrigin 2 variaveis",
-                            "description": "Função rastrigin de 2 variáveis",
-                            "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94",
-                            "createAt": "2024-09-10T14:58:53.347584895-03:00"
-                        }
-                    }
-                }
-            },
-            "GetObjectiveFunctionResponse": {
-                "description": "Resposta da requisição para obtenção de uma função objetivo pelo Id",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/ObjectiveFunctionResponseBody"
-                        },
-                        "example": {
-                            "id": 1,
-                            "name": "Rastrigin 2 variaveis",
-                            "description": "Função rastrigin de 2 variáveis",
-                            "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94",
-                            "createAt": "2024-09-10T14:58:53.347584895-03:00"
-                        }
-                    }
-                }
-            },
-            "PatchObjectiveFunctionResponse": {
-                "description": "Função objetivo alterada com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/ObjectiveFunctionResponseBody"
-                        },
-                        "example": {
-                            "id": 1,
-                            "name": "Função Rastrigin",
-                            "description": "Função rastrigin de 2 variáveis",
-                            "hash": "cc27d84e5fdb68439143b6143f80ba4021e4b05380ba412b3652d56ec5ef86824da18eae36caab4a2f2aaddef32dea3058848c75f3415a0ea664d847d8e94b94",
-                            "createAt": "2024-09-10T14:58:53.347584895-03:00"
-                        }
-                    } 
-                }
-            },
-            "CreateOptimizationRunResponse": {
-                "description": "Rodada de otimização criada com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/CreateOptimizationRunResponseBody"
-                        },
-                        "example": {
-                            "id": 1,
-                            "objectiveFunctionId": 2,
-                            "populationSize": 20,
-                            "strategy": "DE_RAND_1_BIN",
-                            "crossoverProbability": 0.8,
-                            "perturbationFactor": 0.5,
-                            "valueToReach": null,
-                            "maxGenerations": 100,
-                            "objectiveFunctionEvaluationTimeoutSeconds": 30,
-                            "maxObjectiveFunctionReEvaluations": 0,
-                            "chromosomeElementDetails": [
-                                {
-                                    "name": "Rastrigin variable 1",
-                                    "position": 0,
-                                    "lowerBoundary": -5.12,
-                                    "upperBoundary": 5.12,
-                                    "description": "first variable in  rastrigin functions representing x coordinate"
-                                },
-                                {
-                                    "name": "teste element 2",
-                                    "position": 1,
-                                    "lowerBoundary": -5.12,
-                                    "upperBoundary": 5.12,
-                                    "description": "second variable in  rastrigin functions representing y coordinate"
-                                }
-                            ],
-                            "status": "RUNNING"
-                        }
-                    }
-                }
-            },
-            "GetOptimizationRunResponse": {
-                "description": "Rodada de otimização encontrada com sucesso",
-                "content": {
-                "application/json": {
-                    "schema": {
-                        "$ref": "#/components/schemas/GetOptimizationRunResponseBody"
-                    },
-                    "example": {
-                        "id": 1,
-                        "objectiveFunctionId": 1,
-                        "populationSize": 20,
-                        "strategy": "DE_RAND_1_BIN",
-                        "crossoverProbability": 0.8,
-                        "perturbationFactor": 0.5,
-                        "valueToReach": null,
-                        "maxGenerations": 100,
-                        "currentGeneration": 100,
-                        "bestSoFarChromosome": {
-                            "id": 3942,
-                            "populationId": null,
-                            "optimizationRunId": 1,
-                            "objectiveFunctionId": 1,
-                            "type": "EXPERIMENTAL",
-                            "targetChromosomeId": 3922,
-                            "targetPopulationId": 99,
-                            "evaluationStatus": "EVALUATED",
-                            "evaluationErrorReason": null,
-                            "evaluationRetries": 0,
-                            "evaluationId": "59f7d4f3-adbc-407e-a6a3-f17c421abad3",
-                            "evaluationBeginAt": "2024-09-10T14:59:22.123597-03:00",
-                            "evaluatedAt": "2024-09-10T14:59:22.125264-03:00",
-                            "generation": 99,
-                            "fitness": 3.552713678800501E-15,
-                            "elements": [
-                                4.707595264253209E-9,
-                                1.8737016520154776E-9
-                            ],
-                            "createdAt": "2024-09-10T14:59:22.116171-03:00"
-                        },
-                        "objectiveFunctionEvaluationTimeoutSeconds": 30,
-                        "maxObjectiveFunctionReEvaluations": 0,
-                        "status": "FINISHED",
-                        "chromosomeElementDetails": [
-                            {
-                                "name": "Rastrigin variable 1",
-                                "position": 0,
-                                "lowerBoundary": -5.12,
-                                "upperBoundary": 5.12,
-                                "description": "first variable in  rastrigin functions representing x coordinate"
-                            },
-                            {
-                                "name": "teste element 2",
-                                "position": 1,
-                                "lowerBoundary": -5.12,
-                                "upperBoundary": 5.12,
-                                "description": "second variable in  rastrigin functions representing y coordinate"
-                            }
-                        ],
-                        "timeToFinishInSeconds": 22,
-                        "finishedAt": "2024-09-10T14:59:22.410121-03:00",
-                        "createdAt": "2024-09-10T14:59:00.532196-03:00"
-                    }
-                }
-                }
-            },
-            "PatchOptimizationRunResponse": {
-                "description": "Rodada de otimização alterada com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/GetOptimizationRunResponseBody"
-                        },
-                        "example": {
-                            "id": 1,
-                            "objectiveFunctionId": 1,
-                            "populationSize": 20,
-                            "strategy": "DE_RAND_1_BIN",
-                            "crossoverProbability": 0.8,
-                            "perturbationFactor": 0.5,
-                            "valueToReach": null,
-                            "maxGenerations": 100,
-                            "currentGeneration": 100,
-                            "bestSoFarChromosome": {
-                                "id": 3942,
-                                "populationId": null,
-                                "optimizationRunId": 1,
-                                "objectiveFunctionId": 1,
-                                "type": "EXPERIMENTAL",
-                                "targetChromosomeId": 3922,
-                                "targetPopulationId": 99,
-                                "evaluationStatus": "EVALUATED",
-                                "evaluationErrorReason": null,
-                                "evaluationRetries": 0,
-                                "evaluationId": "59f7d4f3-adbc-407e-a6a3-f17c421abad3",
-                                "evaluationBeginAt": "2024-09-10T14:59:22.123597-03:00",
-                                "evaluatedAt": "2024-09-10T14:59:22.125264-03:00",
-                                "generation": 99,
-                                "fitness": 3.552713678800501E-15,
-                                "elements": [
-                                    4.707595264253209E-9,
-                                    1.8737016520154776E-9
-                                ],
-                                "createdAt": "2024-09-10T14:59:22.116171-03:00"
-                            },
-                            "objectiveFunctionEvaluationTimeoutSeconds": 30,
-                            "maxObjectiveFunctionReEvaluations": 0,
-                            "status": "FINISHED",
-                            "chromosomeElementDetails": [
-                                {
-                                    "name": "Rastrigin variable 1",
-                                    "position": 0,
-                                    "lowerBoundary": -5.12,
-                                    "upperBoundary": 5.12,
-                                    "description": "first variable in  rastrigin functions representing x coordinate"
-                                },
-                                {
-                                    "name": "teste element 2",
-                                    "position": 1,
-                                    "lowerBoundary": -5.12,
-                                    "upperBoundary": 5.12,
-                                    "description": "second variable in  rastrigin functions representing y coordinate"
-                                }
-                            ],
-                            "timeToFinishInSeconds": 22,
-                            "finishedAt": "2024-09-10T14:59:22.410121-03:00",
-                            "createdAt": "2024-09-10T14:59:00.532196-03:00"
-                        }
-                    }
-                }
-            },
-            "GetPopulationResponse": {
-                "description": "População obtida com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/PopulationResponseBody"
-                        },
-                        "example": {
-                            "id": 3,
-                            "optimizationRunId": 3,
-                            "generation": 1,
-                            "members": [
-                                {
-                                    "id": 71,
-                                    "populationId": 3,
-                                    "optimizationRunId": 3,
-                                    "objectiveFunctionId": 2,
-                                    "type": "TARGET",
-                                    "targetChromosomeId": null,
-                                    "targetPopulationId": null,
-                                    "evaluationStatus": "NOT_EVALUATED",
-                                    "evaluationErrorReason": null,
-                                    "evaluationRetries": 0,
-                                    "evaluationId": null,
-                                    "evaluationBeginAt": null,
-                                    "evaluatedAt": null,
-                                    "generation": 1,
-                                    "fitness": null,
-                                    "elements": [
-                                        -1.5867472021857156,
-                                        2.3439674550898255
-                                    ],
-                                    "createdAt": "2024-10-04T00:13:28.75012-03:00"
-                                },
-                                {
-                                    "id": 72,
-                                    "populationId": 3,
-                                    "optimizationRunId": 3,
-                                    "objectiveFunctionId": 2,
-                                    "type": "TARGET",
-                                    "targetChromosomeId": null,
-                                    "targetPopulationId": null,
-                                    "evaluationStatus": "NOT_EVALUATED",
-                                    "evaluationErrorReason": null,
-                                    "evaluationRetries": 0,
-                                    "evaluationId": null,
-                                    "evaluationBeginAt": null,
-                                    "evaluatedAt": null,
-                                    "generation": 1,
-                                    "fitness": null,
-                                    "elements": [
-                                        3.804006963802295,
-                                        0.5728849519008294
-                                    ],
-                                    "createdAt": "2024-10-04T00:13:28.750131-03:00"
-                                },
-                                {
-                                    "id": 73,
-                                    "populationId": 3,
-                                    "optimizationRunId": 3,
-                                    "objectiveFunctionId": 2,
-                                    "type": "TARGET",
-                                    "targetChromosomeId": null,
-                                    "targetPopulationId": null,
-                                    "evaluationStatus": "NOT_EVALUATED",
-                                    "evaluationErrorReason": null,
-                                    "evaluationRetries": 0,
-                                    "evaluationId": null,
-                                    "evaluationBeginAt": null,
-                                    "evaluatedAt": null,
-                                    "generation": 1,
-                                    "fitness": null,
-                                    "elements": [
-                                        -0.03997956286128712,
-                                        1.1652524231784271
-                                    ],
-                                    "createdAt": "2024-10-04T00:13:28.750139-03:00"
-                                },
-                                {
-                                    "id": 74,
-                                    "populationId": 3,
-                                    "optimizationRunId": 3,
-                                    "objectiveFunctionId": 2,
-                                    "type": "TARGET",
-                                    "targetChromosomeId": null,
-                                    "targetPopulationId": null,
-                                    "evaluationStatus": "NOT_EVALUATED",
-                                    "evaluationErrorReason": null,
-                                    "evaluationRetries": 0,
-                                    "evaluationId": null,
-                                    "evaluationBeginAt": null,
-                                    "evaluatedAt": null,
-                                    "generation": 1,
-                                    "fitness": null,
-                                    "elements": [
-                                        -4.405630572426504,
-                                        -2.2007155110771714
-                                    ],
-                                    "createdAt": "2024-10-04T00:13:28.750145-03:00"
-                                }
-                            ],
-                            "chromosomesRemainingToBeEvaluated": 8,
-                            "createdAt": "2024-10-04T00:13:28.750149-03:00"
-                        }
-                    }
-                }
-            },
-            "GetPopulationsByOptimizationRunId": {
-                "description": "Obtém paginação de populações por id da rodada de otimização com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginatedPopulationsResponseBody"
-                        },
-                        "example": {
-                            "totalPages": 1,
-                            "totalElements": 1,
-                            "pageable": {
-                                "pageNumber": 0,
-                                "pageSize": 20,
-                                "sort": {
-                                    "sorted": false,
-                                    "empty": true,
-                                    "unsorted": true
-                                },
-                                "offset": 0,
-                                "paged": true,
-                                "unpaged": false
-                            },
-                            "size": 20,
-                            "content": [
-                                {
-                                    "id": 1,
-                                    "optimizationRunId": 1,
-                                    "generation": 1,
-                                    "statistics": {
-                                        "populationId": 1,
-                                        "optimizationRunId": 1,
-                                        "generation": 1,
-                                        "bestChromosome": {
-                                            "id": 1,
-                                            "populationId": 1,
-                                            "optimizationRunId": 1,
-                                            "objectiveFunctionId": 1,
-                                            "type": "TARGET",
-                                            "targetChromosomeId": null,
-                                            "targetPopulationId": null,
-                                            "evaluationStatus": "NOT_EVALUATED",
-                                            "evaluationErrorReason": null,
-                                            "evaluationRetries": 0,
-                                            "evaluationId": null,
-                                            "evaluationBeginAt": null,
-                                            "evaluatedAt": null,
-                                            "generation": 1,
-                                            "fitness": null,
-                                            "elements": [
-                                                89.33662745938034,
-                                                0.03081140435080778,
-                                                15.886014769347106,
-                                                0.08533261269383674,
-                                                0.04021240993159459,
-                                                18.45759072657472,
-                                                0.04601051749228053,
-                                                0.025882461300815736,
-                                                -2.9368966928087907,
-                                                0.05242647513425367,
-                                                0.04291702466376496,
-                                                5.863993959094749,
-                                                0.048746596456198325,
-                                                0.09313907611028921,
-                                                -7.582343920609745,
-                                                0.11478499108269906,
-                                                0.08666838571160777,
-                                                -1.3704090512607436,
-                                                0.013761256920658674,
-                                                0.07636203393709666,
-                                                -16.457964644904305,
-                                                0.020622509318266903
-                                            ],
-                                            "createdAt": "2024-10-01T15:35:45.896363-03:00"
-                                        },
-                                        "bestFitness": null,
-                                        "meanFitness": 0.0,
-                                        "worstFitness": null
-                                    },
-                                    "createdAt": "2024-10-01T15:35:45.896524-03:00"
-                                }
-                            ],
-                            "number": 0,
-                            "sort": {
-                                "sorted": false,
-                                "empty": true,
-                                "unsorted": true
-                            },
-                            "first": true,
-                            "last": true,
-                            "numberOfElements": 1,
-                            "empty": false
-                        }
-                    }
-                }
-            },
-            "GetPopulationStatisticsResponse": {
-                "description": "Obtém dados estatísticos da população pelo ID com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/PopulationStatisticsResponseBody"
-                        },
-                        "example": {
-                            "populationId": 1,
-                            "optimizationRunId": 1,
-                            "generation": 1,
-                            "bestChromosome": {
-                                "id": 1,
-                                "populationId": 1,
-                                "optimizationRunId": 1,
-                                "objectiveFunctionId": 1,
-                                "type": "TARGET",
-                                "targetChromosomeId": null,
-                                "targetPopulationId": null,
-                                "evaluationStatus": "NOT_EVALUATED",
-                                "evaluationErrorReason": null,
-                                "evaluationRetries": 0,
-                                "evaluationId": null,
-                                "evaluationBeginAt": null,
-                                "evaluatedAt": null,
-                                "generation": 1,
-                                "fitness": null,
-                                "elements": [
-                                    89.33662745938034,
-                                    0.03081140435080778,
-                                    15.886014769347106,
-                                    0.08533261269383674,
-                                    0.04021240993159459,
-                                    18.45759072657472,
-                                    0.04601051749228053,
-                                    0.025882461300815736,
-                                    -2.9368966928087907,
-                                    0.05242647513425367,
-                                    0.04291702466376496,
-                                    5.863993959094749,
-                                    0.048746596456198325,
-                                    0.09313907611028921,
-                                    -7.582343920609745,
-                                    0.11478499108269906,
-                                    0.08666838571160777,
-                                    -1.3704090512607436,
-                                    0.013761256920658674,
-                                    0.07636203393709666,
-                                    -16.457964644904305,
-                                    0.020622509318266903
-                                ],
-                                "createdAt": "2024-10-01T15:35:45.896363-03:00"
-                            },
-                            "bestFitness": null,
-                            "meanFitness": 0.0,
-                            "worstFitness": null
-                        }
-                    }
-                }
-            },
-            "GetChromosomeResponse": {
-                "description": "Cromossomo obtido com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/ChromosomeResponseBody"
-                        },
-                        "example": {
-                            "id": 50,
-                            "populationId": 2,
-                            "optimizationRunId": 2,
-                            "objectiveFunctionId": 2,
-                            "type": "TARGET",
-                            "targetChromosomeId": null,
-                            "targetPopulationId": null,
-                            "evaluationStatus": "NOT_EVALUATED",
-                            "evaluationErrorReason": null,
-                            "evaluationRetries": 0,
-                            "evaluationId": null,
-                            "evaluationBeginAt": null,
-                            "evaluatedAt": null,
-                            "generation": 1,
-                            "fitness": null,
-                            "elements": [
-                                2.4622712427296385,
-                                -1.368462268333119
-                            ],
-                            "createdAt": "2024-10-04T00:12:31.128781-03:00"
-                        }
-                    }
-                }
-            },
-            "GetNotEvaluatedChromosomeResponse": {
-                "description": "Obtem chromossomo não avaliado com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/NotEvaluatedChromosomeResponseBody"
-                        },
-                        "examples": {
-                            "otimização em andamento": {
-                                "description": "Resposta fornecida quando a otimização ainda está em andamento e existe um cromossomo não avaliado",
-                                "value": {
-                                    "optimizationRunId": 2,
-                                    "optimizationStatus": "RUNNING",
-                                    "chromosome": {
-                                        "id": 33,
-                                        "populationId": 2,
-                                        "optimizationRunId": 2,
-                                        "objectiveFunctionId": 2,
-                                        "type": "TARGET",
-                                        "targetChromosomeId": null,
-                                        "targetPopulationId": null,
-                                        "evaluationStatus": "EVALUATING",
-                                        "evaluationErrorReason": null,
-                                        "evaluationRetries": 0,
-                                        "evaluationId": "0c4791f7-8c9f-468d-94fa-784847d27f21",
-                                        "evaluationBeginAt": "2024-10-04T00:25:07.857435201-03:00",
-                                        "evaluatedAt": null,
-                                        "generation": 1,
-                                        "fitness": null,
-                                        "elements": [
-                                            -0.8134725394883535,
-                                            -1.3194101740244912
-                                        ],
-                                        "createdAt": "2024-10-04T00:12:31.128505-03:00"
-                                    }
-                                }
-                            },
-                            "otimização finalizada": {
-                                "description": "Resposta fornecida quando otimização ja finalizou",
-                                "value": {
-                                    "optimizationRunId": 2,
-                                    "optimizationStatus": "FINISHED",
-                                    "chromosome": null
-                                  }
-                            }
-                        } 
-                    }
-                }
-            },
-            "PublishEvaluationResultResponse": {
-                "description": "Avaliação do cromossomo publicada com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/ChromosomeResponseBody"
-                        },
-                        "example": {
-                            "id": 32,
-                            "populationId": 2,
-                            "optimizationRunId": 2,
-                            "objectiveFunctionId": 2,
-                            "type": "TARGET",
-                            "targetChromosomeId": null,
-                            "targetPopulationId": null,
-                            "evaluationStatus": "EVALUATED",
-                            "evaluationErrorReason": null,
-                            "evaluationRetries": 0,
-                            "evaluationId": "d0f03be3-9243-4e63-9f56-ac0298c41ab7",
-                            "evaluationBeginAt": "2024-10-04T00:20:40.743857-03:00",
-                            "evaluatedAt": "2024-10-04T00:20:44.88086655-03:00",
-                            "generation": 1,
-                            "fitness": 60.0,
-                            "elements": [
-                                0.8909203189534791,
-                                4.179934087979121
-                            ],
-                            "createdAt": "2024-10-04T00:12:31.128487-03:00"
-                        }
-                    }
-                }
-            },
-            "GetChromosomesByTargetPopulationIdResponse": {
-                "description": "Obtém paginação de cromossomos por id da população alvo com sucesso",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginatedChromosomesResponseBody"
-                        },
-                        "example": {
-                            "totalPages": 7,
-                            "totalElements": 20,
-                            "pageable": {
-                                "pageNumber": 0,
-                                "pageSize": 3,
-                                "sort": {
-                                    "sorted": false,
-                                    "empty": true,
-                                    "unsorted": true
-                                },
-                                "offset": 0,
-                                "paged": true,
-                                "unpaged": false
-                            },
-                            "size": 3,
-                            "content": [
-                                {
-                                    "id": 51,
-                                    "populationId": null,
-                                    "optimizationRunId": 2,
-                                    "objectiveFunctionId": 2,
-                                    "type": "EXPERIMENTAL",
-                                    "targetChromosomeId": 31,
-                                    "targetPopulationId": 2,
-                                    "evaluationStatus": "NOT_EVALUATED",
-                                    "evaluationErrorReason": null,
-                                    "evaluationRetries": 0,
-                                    "evaluationId": null,
-                                    "evaluationBeginAt": null,
-                                    "evaluatedAt": null,
-                                    "generation": 1,
-                                    "fitness": null,
-                                    "elements": [
-                                        3.8674075642025416,
-                                        -2.532454005174685
-                                    ],
-                                    "createdAt": "2024-10-04T00:12:31.208284-03:00"
-                                },
-                                {
-                                    "id": 52,
-                                    "populationId": null,
-                                    "optimizationRunId": 2,
-                                    "objectiveFunctionId": 2,
-                                    "type": "EXPERIMENTAL",
-                                    "targetChromosomeId": 32,
-                                    "targetPopulationId": 2,
-                                    "evaluationStatus": "NOT_EVALUATED",
-                                    "evaluationErrorReason": null,
-                                    "evaluationRetries": 0,
-                                    "evaluationId": null,
-                                    "evaluationBeginAt": null,
-                                    "evaluatedAt": null,
-                                    "generation": 1,
-                                    "fitness": null,
-                                    "elements": [
-                                        0.8909203189534791,
-                                        4.179934087979121
-                                    ],
-                                    "createdAt": "2024-10-04T00:12:31.208308-03:00"
-                                },
-                                {
-                                    "id": 53,
-                                    "populationId": null,
-                                    "optimizationRunId": 2,
-                                    "objectiveFunctionId": 2,
-                                    "type": "EXPERIMENTAL",
-                                    "targetChromosomeId": 33,
-                                    "targetPopulationId": 2,
-                                    "evaluationStatus": "NOT_EVALUATED",
-                                    "evaluationErrorReason": null,
-                                    "evaluationRetries": 0,
-                                    "evaluationId": null,
-                                    "evaluationBeginAt": null,
-                                    "evaluatedAt": null,
-                                    "generation": 1,
-                                    "fitness": null,
-                                    "elements": [
-                                        -0.8134725394883535,
-                                        -1.3194101740244912
-                                    ],
-                                    "createdAt": "2024-10-04T00:12:31.20833-03:00"
-                                }
-                            ],
-                            "number": 0,
-                            "sort": {
-                                "sorted": false,
-                                "empty": true,
-                                "unsorted": true
-                            },
-                            "first": true,
-                            "last": false,
-                            "numberOfElements": 3,
-                            "empty": false
-                        }
-                    }
-                }
-            }
+          "201": {
+            "$ref": "#/components/responses/CreateObjectiveFunctionResponse"
+          }
         }
+      }
     },
-    "tags": [
+    "/objectiveFunction/{id}": {
+      "parameters": [
         {
-            "name": "ObjectiveFunction",
-            "description": "Função objetivo a ser usada durante as rodadas de otimização"
-        },
-        {
-            "name": "OptimizationRun",
-            "description": "Recurso que representa uma rodada de otimização"
-        },
-        {
-            "name": "Population",
-            "description": "Recurso que representa uma população"
-        },
-        {
-            "name": "Chromosome",
-            "description": "Recurso que representa um cromossomo"
+          "name": "id",
+          "description": "Id da função objetivo",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
         }
-    ],
-    "paths": {
-        "/objectiveFunction": {
-            "post": {
-                "description": "Requisição para a criação de uma função objetivo",
-                "tags": ["ObjectiveFunction"],
-                "operationId": "createObjectiveFunction",
-                "requestBody": {
-                    "$ref": "#/components/requestBodies/CreateObjectiveFunctionRequest"
-                },
-                "responses": {
-                    "201": {
-                        "$ref": "#/components/responses/CreateObjectiveFunctionResponse"
-                    }
-                }
-            }
-        },
-        "/objectiveFunction/{id}": {
-            "parameters": [
-                    {
-                        "name": "id",
-                        "description": "Id da função objetivo",
-                        "required": true,
-                        "in": "path",
-                        "schema": {
-                            "type": "integer",
-                            "format": "int64"
-                        }
-                    }
-                ],
-            "get": {
-                "description": "Obtém uma função objetivo pelo Id",
-                "tags": ["ObjectiveFunction"],
-                "operationId": "getObjectiveFunction",
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/GetObjectiveFunctionResponse"
-                    },
-                    "404": {
-                        "description": "Função objetivo não encontrada"
-                    }
-                }
-            },
-            "patch": {
-                "description": "Altera detalhes de função objetivo ja criada",
-                "tags": ["ObjectiveFunction"],
-                "operationId": "updateObjectiveFunction",
-                "requestBody": {
-                    "$ref": "#/components/requestBodies/PatchObjectiveFunctionRequest"
-                },
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/PatchObjectiveFunctionResponse"
-                    },
-                    "404": {
-                        "description": "Função objetivo não encontrada"
-                    }
-                }
-            },
-            "delete": {
-                "description": "Deleta função objetivo pelo Id",
-                "tags": ["ObjectiveFunction"],
-                "operationId": "deleteObjectiveFunction",
-                "responses": {
-                    "200": {
-                        "description": "Função objetivo deletada com sucesso"
-                    },
-                    "404": {
-                        "description": "Função objetivo não encontrada"
-                    }
-                }
-            }
-        },
-        "/optimizationRun": {
-            "post": {
-                "description": "Cria uma nova rodada de otimização",
-                "tags": ["OptimizationRun"],
-                "operationId": "createOptimizationRun",
-                "requestBody": {
-                    "$ref": "#/components/requestBodies/CreateOptimizationRunRequest"
-                },
-                "responses": {
-                    "201": {
-                        "$ref": "#/components/responses/CreateOptimizationRunResponse"
-                    }
-                }
-            }
-        },
-        "/optimizationRun/{id}": {
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id da rodada de otimização",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            ],
-            "get": {
-                "description": "Obtém rodada de otimização pelo Id",
-                "tags": ["OptimizationRun"],
-                "operationId": "getOptimizationRun",
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/GetOptimizationRunResponse"
-                    },
-                    "404": {
-                        "description": "Rodada de otimização não encontrada"
-                    }
-                }
-            },
-            "patch": {
-                "description": "Atualiza parâmetros da rodada de otimização",
-                "tags": ["OptimizationRun"],
-                "operationId": "updateOptimizationRun",
-                "requestBody":{
-                    "$ref": "#/components/requestBodies/PatchOptimizationRunRequest"
-                },
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/PatchOptimizationRunResponse"
-                    }
-                }
-            },
-            "delete": {
-                "description": "Deleta rodada de otimização pelo id",
-                "tags": ["OptimizationRun"],
-                "operationId": "deleteOptimizationRun",
-                "responses": {
-                    "200": {
-                        "description": "Rodada de otimização deletada com sucesso"
-                    },
-                    "404": {
-                        "description": "Rodada de otimização não encontrada"
-                    }
-                }
-            }
-        },
-        "/optimizationRun/{id}/chromosome/notEvaluated":{
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id da rodada de otimização",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            ],
-            "get": {
-                "description": "Obtém cromossomo não avaliado na rodada de otimização fornecida",
-                "tags": ["OptimizationRun"],
-                "operationId": "getNotEvaluatedChromosome",
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/GetNotEvaluatedChromosomeResponse"
-                    },
-                    "404": {
-                        "description": "Nenhum cromossomo encontrado para avaliação no momento, mas a rodada de otimização não finalizou ainda"
-                    }
-                }
-            }
-        },
-        "/optimizationRun/{id}/populations": {
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id da rodada de otimização",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                },
-                {
-                    "name": "size",
-                    "description": "Número de elementos na paginação",
-                    "required": false,
-                    "in": "query",
-                    "schema": {
-                        "type": "integer"
-                    }
-                },
-                {
-                    "name": "page",
-                    "description": "Página requisitada",
-                    "required": false,
-                    "in": "query",
-                    "schema": {
-                        "type": "integer"
-                    }
-                }
-            ],
-            "get": {
-                "description": "Obtém paginação de populações a partir do id da rodada de otimização",
-                "tags": ["OptimizationRun"],
-                "operationId": "getOptimizationRunPopulationsPage",
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/GetPopulationsByOptimizationRunId"
-                    }
-                }
-            }
-        },
-        "/population/{id}": {
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id da população",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            ],
-            "get": {
-                "description": "Obtém população pelo id",
-                "tags": ["Population"],
-                "operationId": "getPopulation",
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/GetPopulationResponse"
-                    },
-                    "404": {
-                        "description": "População não encontrada"
-                    }
-                }
-            }
-        },
-        "/population/{id}/statistics": {
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id da população",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            ],
-            "get": {
-                "description": "Obtém dados estatísticos de uma população pelo Id",
-                "tags": ["Population"],
-                "operationId": "getPopulationStatistics",
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/GetPopulationStatisticsResponse"
-                    },
-                    "404": {
-                        "description": "Population id not found"
-                    }
-                }           
-            }
-        },
-        "/chromosome/{id}": {
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id do cromossomo",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            ],
-            "get": {
-                "description": "Obtém cromossomo pelo id",
-                "tags": ["Chromosome"],
-                "operationId": "getChromosome",
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/GetChromosomeResponse"
-                    }
-                }
-            }
-        },
-        "/chromosome/targetPopulation/{id}": {
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id da população alvo",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                },
-                {
-                    "name": "size",
-                    "description": "Número de elementos na paginação",
-                    "required": false,
-                    "in": "query",
-                    "schema": {
-                        "type": "integer"
-                    }
-                },
-                {
-                    "name": "page",
-                    "description": "Página requisitada",
-                    "required": false,
-                    "in": "query",
-                    "schema": {
-                        "type": "integer"
-                    }
-                }
-            ],
-            "get": {
-                "description": "Obtém lista paginada de cromosomos com o id da população alvo fornecido",
-                "tags": ["Chromosome"],
-                "operationId": "getChromosomesPageByTargetPopulation",
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/GetChromosomesByTargetPopulationIdResponse"
-                    }
-                }
-            }
-        },
-        "/chromosome/{id}/evaluationResult": {
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id do cromossomo",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            ],
-            "post": {
-                "description": "Publica o resultado da avaliação da função objetivo para um cromossomo",
-                "tags": ["Chromosome"],
-                "operationId": "publishChromosomeEvaluationResult",
-                "requestBody": {
-                    "$ref": "#/components/requestBodies/PublishEvaluationResultRequest"
-                },
-                "responses": {
-                    "200": {
-                        "$ref": "#/components/responses/PublishEvaluationResultResponse"
-                    },
-                    "404": {
-                        "description": "Cromossomo não encontrado"
-                    }
-                }
-            }
-        },
-        "/chromosome/{id}/evaluationError": {
-            "parameters": [
-                {
-                    "name": "id",
-                    "description": "Id do cromossomo",
-                    "required": true,
-                    "in": "path",
-                    "schema": {
-                        "type": "integer",
-                        "format": "int64"
-                    }
-                }
-            ],
-            "post": {
-                "description": "Publica erro durante avaliação de cromossomo",
-                "tags": ["Chromosome"],
-                "operationId": "publishChromosomeEvaluationError",
-                "requestBody": {
-                    "$ref": "#/components/requestBodies/PublishEvaluationError"
-                },
-                "responses": {
-                    "200": {
-                        "description": "Erro publicado com sucesso"
-                    },
-                    "404": {
-                        "description": "Cromossomo não encontrado"
-                    }
-                }
-            }
+      ],
+      "get": {
+        "description": "Obtém uma função objetivo pelo Id",
+        "tags": ["ObjectiveFunction"],
+        "operationId": "getObjectiveFunction",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetObjectiveFunctionResponse"
+          },
+          "404": {
+            "description": "Função objetivo não encontrada"
+          }
         }
+      },
+      "patch": {
+        "description": "Altera detalhes de função objetivo ja criada",
+        "tags": ["ObjectiveFunction"],
+        "operationId": "updateObjectiveFunction",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/PatchObjectiveFunctionRequest"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/PatchObjectiveFunctionResponse"
+          },
+          "404": {
+            "description": "Função objetivo não encontrada"
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleta função objetivo pelo Id",
+        "tags": ["ObjectiveFunction"],
+        "operationId": "deleteObjectiveFunction",
+        "responses": {
+          "200": {
+            "description": "Função objetivo deletada com sucesso"
+          },
+          "404": {
+            "description": "Função objetivo não encontrada"
+          }
+        }
+      }
+    },
+    "/optimizationRun": {
+      "get": {
+        "description": "Obtém página de rodadas de otimização",
+        "tags": ["OptimizationRun"],
+        "operationId": "getOptimizationRunsPage",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaginationPageParameter"
+          },
+          {
+            "$ref": "#/components/parameters/PaginationSizeParameter"
+          },
+          {
+            "$ref": "#/components/parameters/PaginationSortParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetOptimizationRunsPageResponse"
+          }
+        }
+      },
+      "post": {
+        "description": "Cria uma nova rodada de otimização",
+        "tags": ["OptimizationRun"],
+        "operationId": "createOptimizationRun",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/CreateOptimizationRunRequest"
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/CreateOptimizationRunResponse"
+          }
+        }
+      }
+    },
+    "/optimizationRun/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id da rodada de otimização",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "get": {
+        "description": "Obtém rodada de otimização pelo Id",
+        "tags": ["OptimizationRun"],
+        "operationId": "getOptimizationRun",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetOptimizationRunResponse"
+          },
+          "404": {
+            "description": "Rodada de otimização não encontrada"
+          }
+        }
+      },
+      "patch": {
+        "description": "Atualiza parâmetros da rodada de otimização",
+        "tags": ["OptimizationRun"],
+        "operationId": "updateOptimizationRun",
+        "requestBody":{
+          "$ref": "#/components/requestBodies/PatchOptimizationRunRequest"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/PatchOptimizationRunResponse"
+          }
+        }
+      },
+      "delete": {
+        "description": "Deleta rodada de otimização pelo id",
+        "tags": ["OptimizationRun"],
+        "operationId": "deleteOptimizationRun",
+        "responses": {
+          "200": {
+            "description": "Rodada de otimização deletada com sucesso"
+          },
+          "404": {
+            "description": "Rodada de otimização não encontrada"
+          }
+        }
+      }
+    },
+    "/optimizationRun/{id}/chromosome/notEvaluated":{
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id da rodada de otimização",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "get": {
+        "description": "Obtém cromossomo não avaliado na rodada de otimização fornecida",
+        "tags": ["OptimizationRun"],
+        "operationId": "getNotEvaluatedChromosome",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetNotEvaluatedChromosomeResponse"
+          },
+          "404": {
+            "description": "Nenhum cromossomo encontrado para avaliação no momento, mas a rodada de otimização não finalizou ainda"
+          }
+        }
+      }
+    },
+    "/optimizationRun/{id}/populations": {
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id da rodada de otimização",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        {
+          "$ref": "#/components/parameters/PaginationPageParameter"
+        },
+        {
+          "$ref": "#/components/parameters/PaginationSizeParameter"
+        },
+        {
+          "$ref": "#/components/parameters/PaginationSortParameter"
+        }
+      ],
+      "get": {
+        "description": "Obtém paginação de populações a partir do id da rodada de otimização",
+        "tags": ["OptimizationRun"],
+        "operationId": "getOptimizationRunPopulationsPage",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetPopulationsByOptimizationRunId"
+          }
+        }
+      }
+    },
+    "/population": {
+      "get": {
+        "description": "Obtém página de populações",
+        "tags": ["Population"],
+        "operationId": "getPopulationsPage",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaginationPageParameter"
+          },
+          {
+            "$ref": "#/components/parameters/PaginationSizeParameter"
+          },
+          {
+            "$ref": "#/components/parameters/PaginationSortParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetPopulationPageResponse"
+          }
+        }
+      }
+    },
+    "/population/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id da população",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "get": {
+        "description": "Obtém população pelo id",
+        "tags": ["Population"],
+        "operationId": "getPopulation",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetPopulationResponse"
+          },
+          "404": {
+            "description": "População não encontrada"
+          }
+        }
+      }
+    },
+    "/population/{id}/statistics": {
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id da população",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "get": {
+        "description": "Obtém dados estatísticos de uma população pelo Id",
+        "tags": ["Population"],
+        "operationId": "getPopulationStatistics",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetPopulationStatisticsResponse"
+          },
+          "404": {
+            "description": "Population id not found"
+          }
+        }
+      }
+    },
+    "/chromosome": {
+      "get": {
+        "description": "Obtém paginação de cromossomos",
+        "tags": ["Chromosome"],
+        "operationId": "getChromosomesPage",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PaginationPageParameter"
+          },
+          {
+            "$ref": "#/components/parameters/PaginationSizeParameter"
+          },
+          {
+            "$ref": "#/components/parameters/PaginationSortParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetChromosomesPageResponse"
+          }
+        }
+      }
+    },
+    "/chromosome/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id do cromossomo",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "get": {
+        "description": "Obtém cromossomo pelo id",
+        "tags": ["Chromosome"],
+        "operationId": "getChromosome",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetChromosomeResponse"
+          }
+        }
+      }
+    },
+    "/chromosome/targetPopulation/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id da população alvo",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        {
+          "$ref": "#/components/parameters/PaginationPageParameter"
+        },
+        {
+          "$ref": "#/components/parameters/PaginationSizeParameter"
+        },
+        {
+          "$ref": "#/components/parameters/PaginationSortParameter"
+        }
+      ],
+      "get": {
+        "description": "Obtém lista paginada de cromosomos com o id da população alvo fornecido",
+        "tags": ["Chromosome"],
+        "operationId": "getChromosomesPageByTargetPopulation",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/GetChromosomesByTargetPopulationIdResponse"
+          }
+        }
+      }
+    },
+    "/chromosome/{id}/evaluationResult": {
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id do cromossomo",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "post": {
+        "description": "Publica o resultado da avaliação da função objetivo para um cromossomo",
+        "tags": ["Chromosome"],
+        "operationId": "publishChromosomeEvaluationResult",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/PublishEvaluationResultRequest"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/PublishEvaluationResultResponse"
+          },
+          "404": {
+            "description": "Cromossomo não encontrado"
+          }
+        }
+      }
+    },
+    "/chromosome/{id}/evaluationError": {
+      "parameters": [
+        {
+          "name": "id",
+          "description": "Id do cromossomo",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      ],
+      "post": {
+        "description": "Publica erro durante avaliação de cromossomo",
+        "tags": ["Chromosome"],
+        "operationId": "publishChromosomeEvaluationError",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/PublishEvaluationError"
+        },
+        "responses": {
+          "200": {
+            "description": "Erro publicado com sucesso"
+          },
+          "404": {
+            "description": "Cromossomo não encontrado"
+          }
+        }
+      }
     }
   }
+}
