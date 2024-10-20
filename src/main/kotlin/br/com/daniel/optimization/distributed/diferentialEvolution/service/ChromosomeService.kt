@@ -40,6 +40,10 @@ class ChromosomeService(
 
     val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
+    fun getChromosomesPage(pageable: Pageable): Page<Chromosome> {
+        return chromosomeRepository.findAll(pageable).map { Chromosome(it) }
+    }
+
     fun getChromosome(chromosomeId: Long): Chromosome {
         val chromosomeData = chromosomeRepository
             .findById(chromosomeId)

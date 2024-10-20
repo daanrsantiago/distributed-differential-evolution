@@ -17,6 +17,13 @@ class ChromosomeController(
     val chromosomeService: ChromosomeService
 ) {
 
+    @GetMapping
+    fun getChromosomesPage(pageable: Pageable): Page<ChromosomeResponse> {
+        val chromosomesPage = chromosomeService.getChromosomesPage(pageable)
+        val chromosomesResponsePage = chromosomesPage.map { ChromosomeResponse(it) }
+        return chromosomesResponsePage
+    }
+
     @GetMapping("/{chromosomeId}")
     fun getChromosomeById(@PathVariable chromosomeId: Long): ResponseEntity<ChromosomeResponse> {
         val chromosome = chromosomeService.getChromosome(chromosomeId)
