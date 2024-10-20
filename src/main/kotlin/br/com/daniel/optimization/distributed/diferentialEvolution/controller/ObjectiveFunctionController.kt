@@ -7,6 +7,8 @@ import br.com.daniel.optimization.distributed.diferentialEvolution.controller.re
 import br.com.daniel.optimization.distributed.diferentialEvolution.controller.response.GetObjectiveFunctionResponse
 import br.com.daniel.optimization.distributed.diferentialEvolution.database.repository.ObjectiveFunctionRepository
 import br.com.daniel.optimization.distributed.diferentialEvolution.exception.RestHandledException
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus.CREATED
 import org.springframework.http.HttpStatus.NOT_FOUND
 import org.springframework.http.ResponseEntity
@@ -17,6 +19,13 @@ import org.springframework.web.bind.annotation.*
 class ObjectiveFunctionController(
     val objectiveFunctionRepository: ObjectiveFunctionRepository
 ) {
+
+    @GetMapping
+    fun getObjectiveFunctionPage(pageable: Pageable): Page<GetObjectiveFunctionResponse> {
+        val objectiveFunctionDataPage = objectiveFunctionRepository.findAll(pageable)
+        val objectiveFunctionResponsePage = objectiveFunctionDataPage.map { GetObjectiveFunctionResponse(it) }
+        return objectiveFunctionResponsePage
+    }
 
     @GetMapping("/{objectiveFunctionId}")
     fun getObjectiveFunctionById(@PathVariable objectiveFunctionId: Long): ResponseEntity<GetObjectiveFunctionResponse> {
